@@ -46,7 +46,7 @@ use std::str;
 const FRAGMENT_SHADER_POINTS: &'static str = include_str!("../shaders/points.fs");
 const VERTEX_SHADER_POINTS: &'static str = include_str!("../shaders/points.vs");
 
-fn draw_octree_debug_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -512,7 +512,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_debug_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views);
         }
 
         window.gl_swap_window();
