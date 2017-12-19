@@ -13,55 +13,10 @@
 // limitations under the License.
 
 use cgmath::{Angle, Decomposed, Deg, InnerSpace, Matrix4, One, Quaternion, Rad, Rotation,
-             Rotation3, Transform, Vector3, Zero};
+             Rotation3, Transform, Vector3, Zero, PerspectiveFov };
 
 use gl;
 use std::f32;
-
-// Constructs a projection matrix. Math lifted from ThreeJS.
-fn make_projection_matrix<A: Into<Rad<f32>>>(
-    near: f32,
-    far: f32,
-    fov: A,
-    zoom: f32,
-    aspect_ratio: f32,
-) -> Matrix4<f32> {
-    let top = 0.5 * near * fov.into().tan() / zoom;
-    let height = 2. * top;
-    let width = aspect_ratio * height;
-    let left = -0.5 * width;
-
-    let right = left + width;
-    let bottom = top - height;
-
-    // Matrix is column major.
-    let x = 2. * near / (right - left);
-    let y = 2. * near / (top - bottom);
-
-    let a = (right + left) / (right - left);
-    let b = (top + bottom) / (top - bottom);
-    let c = -(far + near) / (far - near);
-    let d = -2. * far * near / (far - near);
-
-    Matrix4::new(
-        x,
-        0.,
-        0.,
-        0., // Column 0
-        0.,
-        y,
-        0.,
-        0., // Column 1
-        a,
-        b,
-        c,
-        -1., // Column 2
-        0.,
-        0.,
-        d,
-        0., // Column 3
-    )
-}
 
 #[derive(Debug)]
 pub struct Camera {
@@ -115,8 +70,12 @@ impl Camera {
     pub fn set_size(&mut self, width: i32, height: i32) {
         self.width = width;
         self.height = height;
-        self.projection_matrix =
-            make_projection_matrix(0.1, 10000., Deg(45.), 1., width as f32 / height as f32);
+        self.projection_matrix = Matrix4::from(PerspectiveFov{fovy: Deg(45.).into(), aspect: width as f32 / height as f32, near: 0.1, far: 10000.});
+    }
+
+    pub fn get_world_to_view(&self) -> Matrix4<f32> {
+        let world_to_camera: Matrix4<f32> = self.transform.inverse_transform().unwrap().into();
+        world_to_camera
     }
 
     pub fn get_world_to_gl(&self) -> Matrix4<f32> {
