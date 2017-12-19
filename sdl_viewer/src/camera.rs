@@ -79,8 +79,7 @@ impl Camera {
     }
 
     pub fn get_world_to_gl(&self) -> Matrix4<f32> {
-        let world_to_camera: Matrix4<f32> = self.transform.inverse_transform().unwrap().into();
-        self.projection_matrix * world_to_camera
+        self.projection_matrix * self.get_world_to_view()
     }
 
     /// Update the camera position for the current frame. Returns true if the camera moved in this
