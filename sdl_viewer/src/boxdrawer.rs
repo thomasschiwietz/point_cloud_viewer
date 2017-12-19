@@ -13,13 +13,12 @@
 // limitations under the License.
 
 use gl;
-use glhelper::{compile_shader, link_program};
 use graphic::{GlBuffer, GlProgram, GlVertexArray};
 use gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
 use std::str;
 use std::mem;
 use std::ptr;
-use cgmath::{Array, Matrix, Matrix4};
+use cgmath::{Matrix, Matrix4};
 
 const FRAGMENT_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/outlinedBox.fs");
 const VERTEX_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/outlinedBox.vs");
