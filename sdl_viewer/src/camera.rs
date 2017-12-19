@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{Angle, Decomposed, Deg, InnerSpace, Matrix4, One, Quaternion, Rad, Rotation,
+use cgmath::{Decomposed, Deg, InnerSpace, Matrix4, One, Quaternion, Rad, Rotation,
              Rotation3, Transform, Vector3, Zero, PerspectiveFov };
 
 use gl;
