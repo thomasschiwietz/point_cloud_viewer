@@ -22,7 +22,7 @@ extern crate sdl_viewer;
 extern crate clap;
 
 use cgmath::{Array, Matrix, Matrix4, Vector3, Transform, Perspective};
-use point_viewer::math::{Cuboid, CuboidLike, Vector4f, Vector3f, Matrix4f};
+use point_viewer::math::{Cuboid, CuboidLike, Frustum, Vector4f, Vector3f, Matrix4f};
 use point_viewer::octree;
 use rand::{Rng, thread_rng};
 use sdl2::event::{Event, WindowEvent};
@@ -62,6 +62,22 @@ fn get_bounding_box(min: &Vector3f, max: &Vector3f, matrix: &Matrix4f) -> Cuboid
     rv
 }
 
+fn get_occlusion_projection_matrix(view_matrix_camera: &Matrix4<f32>) -> Matrix4<f32> {
+    let occ_edge_length = 2.0;
+    let occ_min_cube_pos = Vector3::new(-16., 8., 0.);
+
+    // define max pos
+    let occ_max_cube_pos = occ_min_cube_pos + Vector3f::new(occ_edge_length, occ_edge_length, occ_edge_length);
+    
+    // transform cube to view space and compute bounding box in view space
+    let cuboid = get_bounding_box(&occ_min_cube_pos, &occ_max_cube_pos, &view_matrix_camera);
+
+    // compute perspective matrix
+    let min = cuboid.min();
+    let max = cuboid.max();
+    Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
+}
+
 fn draw_occlusion_box_and_frustum(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_matrix: &Matrix4<f32>, draw_frustum: bool, view_matrix_camera: &Matrix4<f32>) {
     let occ_edge_length = 2.0;
     let occ_min_cube_pos = Vector3::new(-16., 8., 0.);
@@ -69,20 +85,7 @@ fn draw_occlusion_box_and_frustum(outlined_box_drawer: &OutlinedBoxDrawer, proje
     draw_outlined_box(&outlined_box_drawer, projection_view_matrix, occ_edge_length, &occ_min_cube_pos, &occ_color);
 
     if draw_frustum {
-        // define max pos
-        let occ_max_cube_pos = occ_min_cube_pos + Vector3f::new(occ_edge_length, occ_edge_length, occ_edge_length);
-        
-        // transform cube to view space and compute bounding box in view space
-        let cuboid = get_bounding_box(&occ_min_cube_pos, &occ_max_cube_pos, &view_matrix_camera);
-
-        // compute perspective matrix
-        let min = cuboid.min();
-        let max = cuboid.max();
-        let occ_projection_matrix = Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.});
-
-        //println!("lr {} ; {};  near {}", min.x, max.x, min.z);
-        //println!("bt {} ; {}", cuboid.min().y, cuboid.max().y);
-        //println!("nf {} ; {}", cuboid.min().z, cuboid.max().z);
+        let occ_projection_matrix = get_occlusion_projection_matrix(&view_matrix_camera);
 
         let mx_occ_frustum = occ_projection_matrix * view_matrix_camera;
         let mx_occ_frustum_inv: Matrix4<f32> = mx_occ_frustum.inverse_transform().unwrap().into();
@@ -530,6 +533,7 @@ fn main() {
 
         let mut num_points_drawn = 0;
         let mut num_nodes_drawn = 0;
+        let mut unoccluded_nodes = Vec::new();
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
             gl::ClearColor(0., 0., 0., 1.);
@@ -538,7 +542,26 @@ fn main() {
             // draw occlusion box
             draw_occlusion_box_and_frustum(&outlined_box_drawer, &camera.get_world_to_gl(), false, &camera.get_world_to_view());
 
+            let occ_projection_matrix = get_occlusion_projection_matrix(&camera.get_world_to_view());
+            let mx = occ_projection_matrix * camera.get_world_to_view();
+            let frustum = Frustum::from_matrix(&mx);
+
+
             for visible_node in &visible_nodes {
+                // need meta data: bounding cube size
+
+                if !frustum.intersects(&visible_node.bounding_cube) {
+                    unoccluded_nodes.push(
+                        octree::VisibleNode {
+                            id: visible_node.id,
+                            level_of_detail: visible_node.level_of_detail,
+                            pixels: visible_node.pixels,
+                            bounding_cube: visible_node.bounding_cube.clone(),
+                        });
+                }
+            }
+
+            for visible_node in &unoccluded_nodes {
                 // TODO(sirver): Track a point budget here when moving, so that FPS never drops too
                 // low.
                 if let Some(view) = node_views.get(&visible_node.id) {
@@ -576,7 +599,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &unoccluded_nodes, &mut node_views);
         }
 
         window.gl_swap_window();

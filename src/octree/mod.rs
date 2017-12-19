@@ -35,7 +35,8 @@ pub const CURRENT_VERSION: i32 = 7;
 pub struct VisibleNode {
     pub id: NodeId,
     pub level_of_detail: i32,
-    pixels: Vector2f,
+    pub pixels: Vector2f,
+    pub bounding_cube: Cube,
 }
 
 #[derive(Debug)]
@@ -209,6 +210,7 @@ impl Octree {
                     id: node_to_explore.id,
                     level_of_detail: level_of_detail,
                     pixels: pixels,
+                    bounding_cube: node_to_explore.bounding_cube,
                 }
             );
         }
