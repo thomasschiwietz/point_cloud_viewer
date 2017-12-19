@@ -21,9 +21,7 @@ extern crate time;
 extern crate sdl_viewer;
 extern crate clap;
 
-use cgmath::{Array, Matrix, Matrix4, Vector3};
-use cgmath::{Angle, Decomposed, Deg, InnerSpace, One, Quaternion, Rad, Rotation,
-             Rotation3, Transform, Zero};
+use cgmath::{Array, Matrix, Matrix4, Vector3, Transform};
 use point_viewer::math::CuboidLike;
 use point_viewer::octree;
 use rand::{Rng, thread_rng};
