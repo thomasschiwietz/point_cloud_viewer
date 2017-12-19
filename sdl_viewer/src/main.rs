@@ -61,7 +61,7 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     for visible_node in _visible_nodes {
         if let Some(_view) = _node_views.get(&visible_node.id) {
             let color = vec![1.,1.,0.,1.];
-            draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, _view, &color);
+            draw_outlined_box_of_node_view(&_outlined_box_drawer, &mx_camera_octree, _view, &color);
         }
     }
     
@@ -80,16 +80,15 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     }
 }
 
-fn draw_outlined_box(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_matrix: &Matrix4<f32>, node_view: &NodeView, color: &Vec<f32>)
+fn draw_outlined_box(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_matrix: &Matrix4<f32>, edge_length: f32, min_cube_pos: &Vector3<f32>, color: &Vec<f32>)
 {
-    let half_edge_length = node_view.meta.bounding_cube.edge_length() / 2.0;
-    let min_cube_pos = node_view.meta.bounding_cube.min();
+    let half_edge_length = edge_length / 2.0;
 
     // create scale matrix   
     let mx_scale = Matrix4::from_scale(half_edge_length);
     
     // create translation matrix
-    let half_edge_vector = Vector3::new(half_edge_length,half_edge_length,half_edge_length);
+    let half_edge_vector = Vector3::new(half_edge_length, half_edge_length, half_edge_length);
     let mx_translation = Matrix4::from_translation(min_cube_pos + half_edge_vector);
     
     let mx = projection_view_matrix * mx_translation * mx_scale;
@@ -98,6 +97,14 @@ fn draw_outlined_box(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_ma
     outlined_box_drawer.update_color(&color);
 
     outlined_box_drawer.draw();
+}
+
+fn draw_outlined_box_of_node_view(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_matrix: &Matrix4<f32>, node_view: &NodeView, color: &Vec<f32>)
+{
+    let edge_length = node_view.meta.bounding_cube.edge_length();
+    let min_cube_pos = node_view.meta.bounding_cube.min();
+
+    draw_outlined_box(outlined_box_drawer, projection_view_matrix, edge_length, &min_cube_pos, color);
 }
 
 fn reshuffle(new_order: &[usize], old_data: Vec<u8>, bytes_per_vertex: usize) -> Vec<u8> {
@@ -493,7 +500,7 @@ fn main() {
                     if show_octree_nodes {
                         let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
                         let color = vec![color_intensity,color_intensity,0.,1.];
-                        draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                        draw_outlined_box_of_node_view(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                     }
                 }
             }
