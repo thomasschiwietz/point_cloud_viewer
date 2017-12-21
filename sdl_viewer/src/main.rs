@@ -546,11 +546,12 @@ fn main() {
             let mx = occ_projection_matrix * camera.get_world_to_view();
             let frustum = Frustum::from_matrix(&mx);
 
-
+            let mut culled_nodes = 0;
             for visible_node in &visible_nodes {
                 // need meta data: bounding cube size
 
-                if !frustum.intersects(&visible_node.bounding_cube) {
+                if !frustum.intersects_inside_or_intersect(&visible_node.bounding_cube) {
+                    // returns true if inside or intersecting
                     unoccluded_nodes.push(
                         octree::VisibleNode {
                             id: visible_node.id,
@@ -559,7 +560,11 @@ fn main() {
                             bounding_cube: visible_node.bounding_cube.clone(),
                         });
                 }
+                else {
+                    culled_nodes += 1;
+                }
             }
+            println!("culled {} nodes", culled_nodes);
 
             for visible_node in &unoccluded_nodes {
                 // TODO(sirver): Track a point budget here when moving, so that FPS never drops too

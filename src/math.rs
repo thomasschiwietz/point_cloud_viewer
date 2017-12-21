@@ -153,6 +153,50 @@ impl Frustum {
         }
         true
     }
+
+    pub fn intersects_inside_or_intersect<C: CuboidLike>(&self, bb: &C) -> bool {
+        for plane in &self.planes {
+            let p1 = Vector3f::new(
+                if plane.normal.x > 0f32 {
+                    bb.min().x
+                } else {
+                    bb.max().x
+                },
+                if plane.normal.y > 0f32 {
+                    bb.min().y
+                } else {
+                    bb.max().y
+                },
+                if plane.normal.z > 0f32 {
+                    bb.min().z
+                } else {
+                    bb.max().z
+                },
+            );
+            let p2 = Vector3f::new(
+                if plane.normal.x > 0f32 {
+                    bb.max().x
+                } else {
+                    bb.min().x
+                },
+                if plane.normal.y > 0f32 {
+                    bb.max().y
+                } else {
+                    bb.min().y
+                },
+                if plane.normal.z > 0f32 {
+                    bb.max().z
+                } else {
+                    bb.min().z
+                },
+            );
+            let d1 = plane.get_distance(&p1);
+            if d1 < 0f32 {      // outside, not intersecting
+                return false;
+            }
+        }
+        true
+    }
 }
 
 
