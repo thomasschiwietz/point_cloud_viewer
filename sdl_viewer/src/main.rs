@@ -564,7 +564,7 @@ fn main() {
                     culled_nodes += 1;
                 }
             }
-            println!("culled {} nodes", culled_nodes);
+            println!("culled {} / {} nodes", culled_nodes, visible_nodes.len());
 
             for visible_node in &unoccluded_nodes {
                 // TODO(sirver): Track a point budget here when moving, so that FPS never drops too
