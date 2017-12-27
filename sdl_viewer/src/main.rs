@@ -33,7 +33,7 @@ use sdl2::video::GLProfile;
 use sdl_viewer::{Camera, gl};
 use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
-use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray};
+use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery};
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
@@ -417,6 +417,8 @@ fn main() {
     let mut enable_slice_limit = false;
     let mut slice_limit = 10;
 
+    let mut gl_query = GlQuery::new();
+
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
     let mut last_log = time::PreciseTime::now();
@@ -501,6 +503,9 @@ fn main() {
         let mut num_nodes_drawn = 0;
         let mut current_slice = 0;
         let mut node_count_of_current_slice = 0;
+
+        gl_query.begin_samples_passed();
+
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
             gl::ClearColor(0., 0., 0., 1.);
@@ -551,6 +556,9 @@ fn main() {
                 }
             }
         }
+
+        gl_query.end();
+
         if force_load_all {
             println!("Force loading all currently visible nodes.");
             while node_views.load_next_node(&octree, &node_drawer.program) {}
@@ -571,6 +579,9 @@ fn main() {
         }
 
         window.gl_swap_window();
+
+        let samples_passed = gl_query.query_samples_passed();
+
         num_frames += 1;
         let now = time::PreciseTime::now();
         if last_log.to(now) > time::Duration::seconds(1) {
@@ -579,9 +590,10 @@ fn main() {
             num_frames = 0;
             last_log = now;
             println!(
-                "FPS: {:#?}, Drew {} points from {} loaded nodes. {} nodes should be shown. {} slices, nodes in current slice {}",
+                "FPS: {:#?}, Drew {} / {} ({}%) points from {} loaded nodes. {} nodes should be shown. {} slices, nodes in current slice {}",
                 fps,
-                num_points_drawn,
+                samples_passed, num_points_drawn,
+                samples_passed as f32 / num_points_drawn as f32 * 100.,
                 num_nodes_drawn,
                 visible_nodes.len(),
                 current_slice,
