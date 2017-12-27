@@ -123,7 +123,8 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
                 color = &color_table[4];
                 draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
             } else {
-            
+                //color = &color_table[3];
+                //draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);           
             }
         }
     }
