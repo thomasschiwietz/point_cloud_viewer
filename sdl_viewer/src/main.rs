@@ -21,7 +21,7 @@ extern crate time;
 extern crate sdl_viewer;
 extern crate clap;
 
-use cgmath::{Array, Matrix, Matrix4, Vector3};
+use cgmath::{Array, Matrix, Matrix4, Vector3, Persective};
 use cgmath::{Angle, Decomposed, Deg, InnerSpace, One, Quaternion, Rad, Rotation,
              Rotation3, Transform, Zero};
 use point_viewer::math::CuboidLike;
@@ -45,6 +45,40 @@ use std::str;
 
 const FRAGMENT_SHADER_POINTS: &'static str = include_str!("../shaders/points.fs");
 const VERTEX_SHADER_POINTS: &'static str = include_str!("../shaders/points.vs");
+
+fn get_bounding_box(min: &Vector3f, max: &Vector3f, matrix: &Matrix4f) -> Cuboid {
+    let mut rv = Cuboid::new();
+    for p in &[
+        Vector4f::new(min.x, min.y, min.z, 1.),
+        Vector4f::new(max.x, min.y, min.z, 1.),
+        Vector4f::new(min.x, max.y, min.z, 1.),
+        Vector4f::new(max.x, max.y, min.z, 1.),
+        Vector4f::new(min.x, min.y, max.z, 1.),
+        Vector4f::new(max.x, min.y, max.z, 1.),
+        Vector4f::new(min.x, max.y, max.z, 1.),
+        Vector4f::new(max.x, max.y, max.z, 1.),
+    ] {
+        let v = matrix * p;
+        rv.update(&Vector3f::new(v.x, v.y, v.z));
+    }
+    rv
+}
+
+fn get_occlusion_projection_matrix(view_matrix_camera: &Matrix4<f32>) -> Matrix4<f32> {
+    let occ_edge_length = 2.0;
+    let occ_min_cube_pos = Vector3::new(-16., 8., 0.);
+
+    // define max pos
+    let occ_max_cube_pos = occ_min_cube_pos + Vector3f::new(occ_edge_length, occ_edge_length, occ_edge_length);
+    
+    // transform cube to view space and compute bounding box in view space
+    let cuboid = get_bounding_box(&occ_min_cube_pos, &occ_max_cube_pos, &view_matrix_camera);
+
+    // compute perspective matrix
+    let min = cuboid.min();
+    let max = cuboid.max();
+    Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
+}
 
 fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer)
 {
