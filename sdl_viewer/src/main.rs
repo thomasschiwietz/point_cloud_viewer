@@ -46,7 +46,7 @@ use std::str;
 const FRAGMENT_SHADER_POINTS: &'static str = include_str!("../shaders/points.fs");
 const VERTEX_SHADER_POINTS: &'static str = include_str!("../shaders/points.vs");
 
-fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, show_slice: i32)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -59,11 +59,24 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
     }
 
+    let color_table = [
+        vec![1.,0.,0.,1.],
+        vec![0.,1.,0.,1.],
+        vec![0.,1.,0.,1.],
+        vec![0.,0.,1.,1.],
+        vec![1.,1.,0.,1.],
+        vec![0.,1.,1.,1.],
+        vec![1.,0.,1.,1.],
+        ];
+
     let mx_camera_octree: Matrix4<f32> = _camera_octree.get_world_to_gl();
     for visible_node in _visible_nodes {
-        if let Some(_view) = _node_views.get(&visible_node.id) {
-            let color = vec![1.,1.,0.,1.];
-            draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, _view, &color);
+        if visible_node.slice != show_slice {
+            continue;
+        }
+        if let Some(view) = _node_views.get(&visible_node.id) {
+            let color = &color_table[visible_node.slice as usize % color_table.len()];
+            draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
         }
     }
     
@@ -392,11 +405,12 @@ fn main() {
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
     let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+    let mut show_slice = 0;
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
     let mut last_log = time::PreciseTime::now();
-    let mut force_load_all = false;
+    let mut force_load_all = true;
     let mut show_octree_nodes = false;
     let mut show_octree_view = false;
     let mut use_level_of_detail = true;
@@ -423,6 +437,8 @@ fn main() {
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
                         Scancode::Num0 => point_size += 0.1,
+                        Scancode::U => { show_slice -= 1; println!("show slice {}", show_slice) },
+                        Scancode::I => { show_slice += 1; println!("show slice {}", show_slice) },
                         _ => (),
                     }
                 }
@@ -470,14 +486,18 @@ fn main() {
 
         let mut num_points_drawn = 0;
         let mut num_nodes_drawn = 0;
+        let mut current_slice = 0;
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
             gl::ClearColor(0., 0., 0., 1.);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-            for visible_node in &visible_nodes {
-                // TODO(sirver): Track a point budget here when moving, so that FPS never drops too
-                // low.
+            let slice_pixel_count: i64 = 2 * camera.width as i64 * camera.height as i64;
+            let mut current_slice_pixel_count = 0;
+
+            for i in 0..visible_nodes.len() {
+                let mut visible_node = &mut visible_nodes[i];
+
                 if let Some(view) = node_views.get(&visible_node.id) {
                     let node_points_drawn = node_drawer.draw(
                         view,
@@ -498,6 +518,13 @@ fn main() {
                         let color = vec![color_intensity,color_intensity,0.,1.];
                         draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                     }
+                    current_slice_pixel_count += node_points_drawn;
+                    visible_node.slice = current_slice;
+                }
+
+                if current_slice_pixel_count >= slice_pixel_count {
+                    current_slice += 1;
+                    current_slice_pixel_count = 0;
                 }
             }
         }
@@ -513,7 +540,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, show_slice);
         }
 
         window.gl_swap_window();
@@ -525,11 +552,12 @@ fn main() {
             num_frames = 0;
             last_log = now;
             println!(
-                "FPS: {:#?}, Drew {} points from {} loaded nodes. {} nodes should be shown.",
+                "FPS: {:#?}, Drew {} points from {} loaded nodes. {} nodes should be shown. {} slices",
                 fps,
                 num_points_drawn,
                 num_nodes_drawn,
-                visible_nodes.len()
+                visible_nodes.len(),
+                current_slice,
             );
         }
     };

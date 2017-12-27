@@ -36,6 +36,7 @@ pub struct VisibleNode {
     pub id: NodeId,
     pub level_of_detail: i32,
     pixels: Vector2f,
+    pub slice: i32,
 }
 
 #[derive(Debug)]
@@ -209,6 +210,7 @@ impl Octree {
                     id: node_to_explore.id,
                     level_of_detail: level_of_detail,
                     pixels: pixels,
+                    slice: 0,
                 }
             );
         }

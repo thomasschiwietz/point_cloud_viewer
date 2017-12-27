@@ -100,7 +100,7 @@ impl Camera {
             transform: Decomposed {
                 scale: 1.,
                 rot: Quaternion::one(),
-                disp: Vector3::new(0., 0., 150.),
+                disp: Vector3::new(0., 0., 300.),
             },
 
             // These will be set by set_size().
