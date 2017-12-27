@@ -64,16 +64,13 @@ fn get_bounding_box(min: &Vector3f, max: &Vector3f, matrix: &Matrix4f) -> Cuboid
     rv
 }
 
-fn get_occlusion_projection_matrix(edge_length: f32, min_cube_pos: &Vector3f, view_matrix_camera: &Matrix4<f32>) -> Matrix4<f32> {
-    // define max pos
-    let max_cube_pos = min_cube_pos + Vector3f::new(edge_length, edge_length, edge_length);
-    
+fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matrix4<f32>) -> Matrix4<f32> {
     // transform cube to view space and compute bounding box in view space
-    let cuboid = get_bounding_box(&min_cube_pos, &max_cube_pos, &view_matrix_camera);
+    let bounding_box = get_bounding_box(&cube.min(), &cube.max(), &view_matrix_camera);
 
     // compute perspective matrix
-    let min = cuboid.min();
-    let max = cuboid.max();
+    let min = bounding_box.min();
+    let max = bounding_box.max();
     Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
 }
 
@@ -107,11 +104,9 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
                 color = &color_table[0];
                 draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
 
-                let cube = &view.meta.bounding_cube;
-
                 let view_matrix_camera = &_camera.get_world_to_camera();
 
-                let occ_projection_matrix = get_occlusion_projection_matrix(cube.edge_length(), &cube.min(), view_matrix_camera);
+                let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, view_matrix_camera);
 
                 let mx_occ_frustum = occ_projection_matrix * view_matrix_camera;
                 let mx_occ_frustum_inv: Matrix4<f32> = mx_occ_frustum.inverse_transform().unwrap().into();
@@ -551,6 +546,7 @@ fn main() {
         let mut batch_size = 10;
         let mut current_batch = 0;
         let mut num_occluders = 0;
+        let mut num_occluded = 0;
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -604,9 +600,12 @@ fn main() {
             } else {
                 // occ query pass
                 let mut query_state = false;       // render state or query state
-
-                for i in 0..visible_nodes.len() {
+                let node_count = visible_nodes.len();
+                for i in 0..node_count {
                     let mut visible_node = &mut visible_nodes[i];
+                    if visible_node.occluded {
+                        continue;
+                    }
 
                     if let Some(view) = node_views.get(&visible_node.id) {
 
@@ -632,6 +631,37 @@ fn main() {
                             if pass_ratio < 0.1 {
                                 visible_node.occluder = true;
                                 num_occluders += 1;
+
+                                let world_to_camera_matrix = camera.get_world_to_camera();
+                                let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
+                                let mx = occ_projection_matrix * world_to_camera_matrix;
+                                let frustum = Frustum::from_matrix(&mx);
+
+                                for j in i+1..node_count {
+                                    let mut visible_node = &mut visible_nodes[i];                     
+                                     if !frustum.intersects_inside_or_intersect(&visible_node.bounding_cube) {
+                                     }
+                                }
+
+                                // let mut culled_nodes = 0;
+                                // for visible_node in &visible_nodes {
+                                //     // need meta data: bounding cube size
+
+                                //     if !frustum.intersects_inside_or_intersect(&visible_node.bounding_cube) {
+                                //         // returns true if inside or intersecting
+                                //         unoccluded_nodes.push(
+                                //             octree::VisibleNode {
+                                //                 id: visible_node.id,
+                                //                 level_of_detail: visible_node.level_of_detail,
+                                //                 pixels: visible_node.pixels,
+                                //                 bounding_cube: visible_node.bounding_cube.clone(),
+                                //             });
+                                //     }
+                                //     else {
+                                //         culled_nodes += 1;
+                                //     }
+                                // }
+                                // println!("culled {} / {} nodes", culled_nodes, visible_nodes.len());
                             }
                         }
 
@@ -706,11 +736,12 @@ fn main() {
             //     node_count_of_current_slice,
             // );
             println!(
-                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, occluder nodes {}",
+                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, occluder nodes {}, occluded nodes {}",
                 fps,
                 samples_passed, num_points_drawn,
                 samples_passed as f32 / num_points_drawn as f32 * 100.,
                 visible_nodes.len(),
+                num_occluders,
                 num_occluders,
             );
         }
