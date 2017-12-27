@@ -453,13 +453,11 @@ fn main() {
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
     let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
-    let mut show_slice = 0;
-    let mut enable_slice_limit = false;
-    let mut slice_limit = 10;
 
     let mut gl_query = GlQuery::new();
     let mut gl_query_node = GlQuery::new();
     let mut enable_occ_query = true;
+    let mut batch_size = 10;
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
@@ -491,12 +489,9 @@ fn main() {
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
                         Scancode::Num0 => point_size += 0.1,
-                        Scancode::U => { show_slice -= 1; println!("show slice {}", show_slice) },
-                        Scancode::I => { show_slice += 1; println!("show slice {}", show_slice) },
-                        Scancode::G => enable_slice_limit = !enable_slice_limit,
-                        Scancode::H => { slice_limit -= 1; println!("slice_limit {}", slice_limit) },
-                        Scancode::J => { slice_limit += 1; println!("slice_limit {}", slice_limit) },
                         Scancode::B => enable_occ_query = !enable_occ_query,
+                        Scancode::N => { batch_size -= 1; println!("batch_size {}", batch_size) },
+                        Scancode::M => { batch_size += 1; println!("batch_size {}", batch_size) },
                         _ => (), 
                     }
                 }
@@ -544,18 +539,12 @@ fn main() {
 
         let mut num_points_drawn = 0;
         let mut num_nodes_drawn = 0;
-        let mut current_slice = 0;
-        let mut node_count_of_current_slice = 0;
 
         let slice_pixel_count: i64 = camera.width as i64 * camera.height as i64;
         let mut current_slice_pixel_count = 0;
 
         gl_query.begin_samples_passed();
-        let mut batch_size = 10;
         let mut current_batch = 0;
-        let mut num_occluders = 0;
-        let mut num_occluded = 0;
-        let mut query_batch_size = 0;
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -589,21 +578,6 @@ fn main() {
                             draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                         }
                         current_slice_pixel_count += node_points_drawn;
-                        visible_node.slice = current_slice;
-                        if current_slice == show_slice {
-                            node_count_of_current_slice += 1;
-                        }
-                    }
-
-                    if current_slice_pixel_count >= slice_pixel_count {
-                        current_slice += 1;
-                        current_slice_pixel_count = 0;
-                    }
-
-                    if enable_slice_limit {
-                        if current_slice >= slice_limit {
-                            break;
-                        }
                     }
                 }
             } else {
@@ -611,7 +585,6 @@ fn main() {
                 let mut query_state = false;       // render state or query state
                 let node_count = visible_nodes.len();
                 for i in 0..node_count {
-                    //let mut visible_node = &visible_nodes[i];
                     if visible_nodes[i].occluded {
                        continue;
                     }
@@ -620,7 +593,6 @@ fn main() {
 
                         if query_state {
                             gl_query_node.begin_samples_passed();   
-                            query_batch_size += 1;     
                         }
 
                         let node_points_drawn = node_drawer.draw(
@@ -638,10 +610,9 @@ fn main() {
                             let samples_passed = gl_query_node.query_samples_passed();
 
                             let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
-                            if pass_ratio < 0.001 /*&& num_occluders == 0 */{
+                            if pass_ratio < 0.001 {
 
                                 visible_nodes[i].occluder = true;
-                                num_occluders += 1;
 
                                 let world_to_camera_matrix = camera.get_world_to_camera();
                                 let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
@@ -657,7 +628,6 @@ fn main() {
                                     }
                                     if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
                                         visible_nodes[j].occluded = true;
-                                        //num_occluded += 1;
                                     }
                                 }
                                 
@@ -672,26 +642,21 @@ fn main() {
                             draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                         }
                         current_slice_pixel_count += node_points_drawn;
-                        //visible_node.slice = current_slice;
-                        if current_slice == show_slice {
-                            node_count_of_current_slice += 1;
-                        }
-                    }
 
-                    if current_slice_pixel_count >= slice_pixel_count {
-                        current_batch += 1;
-                        current_slice_pixel_count = 0;
+                        if current_slice_pixel_count >= slice_pixel_count {
+                            current_batch += 1;
+                            current_slice_pixel_count = 0;
 
-                        if !query_state {
-                            if current_batch >= batch_size {
-                                query_state = true;
-                                query_batch_size = 0;
+                            if !query_state {
+                                if current_batch >= batch_size {
+                                    query_state = true;
+                                }
+                            } else {
+                                // finish query state after one batch
+                                query_state = false;
+                                
+                                //break;
                             }
-                        } else {
-                            // finish query state after one batch
-                            query_state = false;
-                            
-                            //break;
                         }
                     }
                 }
@@ -726,25 +691,12 @@ fn main() {
             let fps = (num_frames * 1_000_000u32) as f32 / duration as f32;
             num_frames = 0;
             last_log = now;
-            // println!(
-            //     "FPS: {:#?}, Drew {} / {} ({}%) points from {} loaded nodes. {} nodes should be shown. {} slices, nodes in current slice {}",
-            //     fps,
-            //     samples_passed, num_points_drawn,
-            //     samples_passed as f32 / num_points_drawn as f32 * 100.,
-            //     num_nodes_drawn,
-            //     visible_nodes.len(),
-            //     current_slice,
-            //     node_count_of_current_slice,
-            // );
             println!(
-                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}", //, occluder nodes {}, occluded nodes {}, query batch size {}",
+                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}",
                 fps,
                 samples_passed, num_points_drawn, samples_passed as f32 / num_points_drawn as f32 * 100.,
                 visible_nodes.len(),
                 num_nodes_drawn,
-                //num_occluders,
-                //num_occluded,
-                //query_batch_size,
             );
         }
     };
