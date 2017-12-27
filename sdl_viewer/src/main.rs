@@ -500,6 +500,7 @@ fn main() {
         let mut num_points_drawn = 0;
         let mut num_nodes_drawn = 0;
         let mut current_slice = 0;
+        let mut node_count_of_current_slice = 0;
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
             gl::ClearColor(0., 0., 0., 1.);
@@ -533,6 +534,9 @@ fn main() {
                     }
                     current_slice_pixel_count += node_points_drawn;
                     visible_node.slice = current_slice;
+                    if current_slice == show_slice {
+                        node_count_of_current_slice += 1;
+                    }
                 }
 
                 if current_slice_pixel_count >= slice_pixel_count {
@@ -575,12 +579,13 @@ fn main() {
             num_frames = 0;
             last_log = now;
             println!(
-                "FPS: {:#?}, Drew {} points from {} loaded nodes. {} nodes should be shown. {} slices",
+                "FPS: {:#?}, Drew {} points from {} loaded nodes. {} nodes should be shown. {} slices, nodes in current slice {}",
                 fps,
                 num_points_drawn,
                 num_nodes_drawn,
                 visible_nodes.len(),
                 current_slice,
+                node_count_of_current_slice,
             );
         }
     };
