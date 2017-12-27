@@ -64,15 +64,12 @@ fn get_bounding_box(min: &Vector3f, max: &Vector3f, matrix: &Matrix4f) -> Cuboid
     rv
 }
 
-fn get_occlusion_projection_matrix(view_matrix_camera: &Matrix4<f32>) -> Matrix4<f32> {
-    let occ_edge_length = 2.0;
-    let occ_min_cube_pos = Vector3::new(-16., 8., 0.);
-
+fn get_occlusion_projection_matrix(edge_length: f32, min_cube_pos: &Vector3f, view_matrix_camera: &Matrix4<f32>) -> Matrix4<f32> {
     // define max pos
-    let occ_max_cube_pos = occ_min_cube_pos + Vector3f::new(occ_edge_length, occ_edge_length, occ_edge_length);
+    let max_cube_pos = min_cube_pos + Vector3f::new(edge_length, edge_length, edge_length);
     
     // transform cube to view space and compute bounding box in view space
-    let cuboid = get_bounding_box(&occ_min_cube_pos, &occ_max_cube_pos, &view_matrix_camera);
+    let cuboid = get_bounding_box(&min_cube_pos, &max_cube_pos, &view_matrix_camera);
 
     // compute perspective matrix
     let min = cuboid.min();
@@ -109,6 +106,8 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
             if visible_node.occluder {
                 color = &color_table[0];
                 draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
+                let cube = &view.meta.bounding_cube;
+                let occ_projection = get_occlusion_projection_matrix(cube.edge_length(), &cube.min(), &_camera.get_world_to_gl());
             }
         }
     }
