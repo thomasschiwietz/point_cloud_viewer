@@ -24,7 +24,7 @@ extern crate clap;
 use cgmath::{Array, Matrix, Matrix4, Vector3, Perspective};
 use cgmath::{Angle, Decomposed, Deg, InnerSpace, One, Quaternion, Rad, Rotation,
              Rotation3, Transform, Zero};
-use point_viewer::math::{CuboidLike, Cuboid};
+use point_viewer::math::{Cuboid, CuboidLike, Frustum, Vector4f, Vector3f, Matrix4f};
 use point_viewer::octree;
 use rand::{Rng, thread_rng};
 use sdl2::event::{Event, WindowEvent};

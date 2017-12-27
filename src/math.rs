@@ -20,6 +20,7 @@ use std;
 
 pub type Vector2f = cgmath::Vector2<f32>;
 pub type Vector3f = cgmath::Vector3<f32>;
+pub type Vector4f = cgmath::Vector4<f32>;
 pub type Matrix4f = cgmath::Matrix4<f32>;
 pub use cgmath::prelude::*;
 
