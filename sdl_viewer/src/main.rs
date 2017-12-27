@@ -46,7 +46,7 @@ use std::str;
 const FRAGMENT_SHADER_POINTS: &'static str = include_str!("../shaders/points.fs");
 const VERTEX_SHADER_POINTS: &'static str = include_str!("../shaders/points.vs");
 
-fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, show_slice: i32)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, show_slice: i32, slice_limited: bool)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -71,8 +71,16 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
 
     let mx_camera_octree: Matrix4<f32> = _camera_octree.get_world_to_gl();
     for visible_node in _visible_nodes {
-        if visible_node.slice != show_slice {
-            continue;
+        if !slice_limited {
+            if visible_node.slice != show_slice {
+                continue;
+            }
+        }
+        else
+        {
+            if visible_node.slice < show_slice {
+                continue;
+            }
         }
         if let Some(view) = _node_views.get(&visible_node.id) {
             let color = &color_table[visible_node.slice as usize % color_table.len()];
@@ -551,7 +559,11 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, show_slice);
+            if enable_slice_limit {
+                draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, slice_limit, enable_slice_limit);
+            } else {
+                draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, show_slice, enable_slice_limit);
+            }
         }
 
         window.gl_swap_window();
