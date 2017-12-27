@@ -638,7 +638,7 @@ fn main() {
                             let samples_passed = gl_query_node.query_samples_passed();
 
                             let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
-                            if pass_ratio < 0.05 /*&& num_occluders == 0 */{
+                            if pass_ratio < 0.001 /*&& num_occluders == 0 */{
 
                                 visible_nodes[i].occluder = true;
                                 num_occluders += 1;
@@ -657,7 +657,7 @@ fn main() {
                                     }
                                     if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
                                         visible_nodes[j].occluded = true;
-                                        num_occluded += 1;
+                                        //num_occluded += 1;
                                     }
                                 }
                                 
@@ -691,7 +691,7 @@ fn main() {
                             // finish query state after one batch
                             query_state = false;
                             
-                            break;
+                            //break;
                         }
                     }
                 }
@@ -712,7 +712,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, true);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, false);
         }
 
         window.gl_swap_window();
@@ -737,14 +737,14 @@ fn main() {
             //     node_count_of_current_slice,
             // );
             println!(
-                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}, occluder nodes {}, occluded nodes {}, query batch size {}",
+                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}", //, occluder nodes {}, occluded nodes {}, query batch size {}",
                 fps,
                 samples_passed, num_points_drawn, samples_passed as f32 / num_points_drawn as f32 * 100.,
                 visible_nodes.len(),
                 num_nodes_drawn,
-                num_occluders,
-                num_occluded,
-                query_batch_size,
+                //num_occluders,
+                //num_occluded,
+                //query_batch_size,
             );
         }
     };
