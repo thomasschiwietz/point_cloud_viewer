@@ -37,6 +37,8 @@ pub struct VisibleNode {
     pub level_of_detail: i32,
     pixels: Vector2f,
     pub slice: i32,
+    pub occluder: bool,
+    pub occluded: bool,
 }
 
 #[derive(Debug)]
@@ -211,6 +213,8 @@ impl Octree {
                     level_of_detail: level_of_detail,
                     pixels: pixels,
                     slice: 0,
+                    occluder: false,
+                    occluded: false,
                 }
             );
         }

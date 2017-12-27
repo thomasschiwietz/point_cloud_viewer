@@ -46,7 +46,7 @@ use std::str;
 const FRAGMENT_SHADER_POINTS: &'static str = include_str!("../shaders/points.fs");
 const VERTEX_SHADER_POINTS: &'static str = include_str!("../shaders/points.vs");
 
-fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, show_slice: i32, slice_limited: bool)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -62,7 +62,6 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     let color_table = [
         vec![1.,0.,0.,1.],
         vec![0.,1.,0.,1.],
-        vec![0.,1.,0.,1.],
         vec![0.,0.,1.,1.],
         vec![1.,1.,0.,1.],
         vec![0.,1.,1.,1.],
@@ -71,20 +70,12 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
 
     let mx_camera_octree: Matrix4<f32> = _camera_octree.get_world_to_gl();
     for visible_node in _visible_nodes {
-        if !slice_limited {
-            if visible_node.slice != show_slice {
-                continue;
-            }
-        }
-        else
-        {
-            if visible_node.slice < show_slice {
-                continue;
-            }
-        }
         if let Some(view) = _node_views.get(&visible_node.id) {
-            let color = &color_table[visible_node.slice as usize % color_table.len()];
-            draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
+            let mut color = &color_table[3];//visible_node.slice as usize % color_table.len()];
+            if visible_node.occluder {
+                color = &color_table[0];
+                draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
+            }
         }
     }
     
@@ -418,6 +409,8 @@ fn main() {
     let mut slice_limit = 10;
 
     let mut gl_query = GlQuery::new();
+    let mut gl_query_node = GlQuery::new();
+    let mut enable_occ_query = true;
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
@@ -454,7 +447,8 @@ fn main() {
                         Scancode::G => enable_slice_limit = !enable_slice_limit,
                         Scancode::H => { slice_limit -= 1; println!("slice_limit {}", slice_limit) },
                         Scancode::J => { slice_limit += 1; println!("slice_limit {}", slice_limit) },
-                        _ => (),
+                        Scancode::B => enable_occ_query = !enable_occ_query,
+                        _ => (), 
                     }
                 }
                 Event::KeyUp { scancode: Some(code), .. } => {
@@ -504,54 +498,123 @@ fn main() {
         let mut current_slice = 0;
         let mut node_count_of_current_slice = 0;
 
+        let slice_pixel_count: i64 = camera.width as i64 * camera.height as i64;
+        let mut current_slice_pixel_count = 0;
+
         gl_query.begin_samples_passed();
+        let mut batch_size = 10;
+        let mut current_batch = 0;
+        let mut num_occluders = 0;
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
             gl::ClearColor(0., 0., 0., 1.);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-            let slice_pixel_count: i64 = camera.width as i64 * camera.height as i64;
-            let mut current_slice_pixel_count = 0;
+            if !enable_occ_query {
+                for i in 0..visible_nodes.len() {
+                    let visible_node = &mut visible_nodes[i];
 
-            for i in 0..visible_nodes.len() {
-                let mut visible_node = &mut visible_nodes[i];
+                    if let Some(view) = node_views.get(&visible_node.id) {
 
-                if let Some(view) = node_views.get(&visible_node.id) {
-                    let node_points_drawn = node_drawer.draw(
-                        view,
-                        if use_level_of_detail {
-                            visible_node.level_of_detail
+                        let node_points_drawn = node_drawer.draw(
+                            view,
+                            if use_level_of_detail {
+                                visible_node.level_of_detail
+                            } else {
+                                1
+                            },
+                            point_size, gamma
+                        );
+
+                        num_points_drawn += node_points_drawn;
+                        num_nodes_drawn += 1;
+                        if max_number_of_points_per_node < node_points_drawn {
+                            max_number_of_points_per_node = node_points_drawn;
+                        }
+                        if show_octree_nodes {
+                            let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
+                            let color = vec![color_intensity,color_intensity,0.,1.];
+                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                        }
+                        current_slice_pixel_count += node_points_drawn;
+                        visible_node.slice = current_slice;
+                        if current_slice == show_slice {
+                            node_count_of_current_slice += 1;
+                        }
+                    }
+
+                    if current_slice_pixel_count >= slice_pixel_count {
+                        current_slice += 1;
+                        current_slice_pixel_count = 0;
+                    }
+
+                    if enable_slice_limit {
+                        if current_slice >= slice_limit {
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // occ query pass
+                let mut query_state = false;       // render state or query state
+
+                for i in 0..visible_nodes.len() {
+                    let mut visible_node = &mut visible_nodes[i];
+
+                    if let Some(view) = node_views.get(&visible_node.id) {
+
+                        if query_state {
+                            gl_query_node.begin_samples_passed();        
+                        }
+
+                        let node_points_drawn = node_drawer.draw(
+                            view,
+                            if use_level_of_detail {
+                                visible_node.level_of_detail
+                            } else {
+                                1
+                            },
+                            point_size, gamma
+                        );
+
+                        if query_state {
+                            gl_query_node.end();
+                            let samples_passed = gl_query_node.query_samples_passed();
+
+                            let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
+                            if pass_ratio < 0.1 {
+                                visible_node.occluder = true;
+                                num_occluders += 1;
+                            }
+                        }
+
+                        num_points_drawn += node_points_drawn;
+                        num_nodes_drawn += 1;
+                        if show_octree_nodes {
+                            let color_intensity = 1.;
+                            let color = vec![color_intensity,color_intensity,0.,1.];
+                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                        }
+                        current_slice_pixel_count += node_points_drawn;
+                        visible_node.slice = current_slice;
+                        if current_slice == show_slice {
+                            node_count_of_current_slice += 1;
+                        }
+                    }
+
+                    if current_slice_pixel_count >= slice_pixel_count {
+                        current_batch += 1;
+                        current_slice_pixel_count = 0;
+
+                        if !query_state {
+                            if current_batch >= batch_size {
+                                query_state = true;
+                            }
                         } else {
-                            1
-                        },
-                        point_size, gamma
-                    );
-                    num_points_drawn += node_points_drawn;
-                    num_nodes_drawn += 1;
-                    if max_number_of_points_per_node < node_points_drawn {
-                        max_number_of_points_per_node = node_points_drawn;
-                    }
-                    if show_octree_nodes {
-                        let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
-                        let color = vec![color_intensity,color_intensity,0.,1.];
-                        draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                    }
-                    current_slice_pixel_count += node_points_drawn;
-                    visible_node.slice = current_slice;
-                    if current_slice == show_slice {
-                        node_count_of_current_slice += 1;
-                    }
-                }
-
-                if current_slice_pixel_count >= slice_pixel_count {
-                    current_slice += 1;
-                    current_slice_pixel_count = 0;
-                }
-
-                if enable_slice_limit {
-                    if current_slice >= slice_limit {
-                        break;
+                            // finish query state after one batch
+                            query_state = false;
+                        }
                     }
                 }
             }
@@ -571,11 +634,7 @@ fn main() {
         }
 
         if show_octree_view {
-            if enable_slice_limit {
-                draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, slice_limit, enable_slice_limit);
-            } else {
-                draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, show_slice, enable_slice_limit);
-            }
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views);
         }
 
         window.gl_swap_window();
@@ -589,15 +648,23 @@ fn main() {
             let fps = (num_frames * 1_000_000u32) as f32 / duration as f32;
             num_frames = 0;
             last_log = now;
+            // println!(
+            //     "FPS: {:#?}, Drew {} / {} ({}%) points from {} loaded nodes. {} nodes should be shown. {} slices, nodes in current slice {}",
+            //     fps,
+            //     samples_passed, num_points_drawn,
+            //     samples_passed as f32 / num_points_drawn as f32 * 100.,
+            //     num_nodes_drawn,
+            //     visible_nodes.len(),
+            //     current_slice,
+            //     node_count_of_current_slice,
+            // );
             println!(
-                "FPS: {:#?}, Drew {} / {} ({}%) points from {} loaded nodes. {} nodes should be shown. {} slices, nodes in current slice {}",
+                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, occluder nodes {}",
                 fps,
                 samples_passed, num_points_drawn,
                 samples_passed as f32 / num_points_drawn as f32 * 100.,
-                num_nodes_drawn,
                 visible_nodes.len(),
-                current_slice,
-                node_count_of_current_slice,
+                num_occluders,
             );
         }
     };
