@@ -74,7 +74,7 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
     Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
 }
 
-fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, draw_occ_frustums: bool)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, enable_occ_query: bool)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -100,31 +100,37 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     for visible_node in _visible_nodes {
         if let Some(view) = _node_views.get(&visible_node.id) {
             let mut color = &color_table[3];//visible_node.slice as usize % color_table.len()];
-            if visible_node.occluder {
-                color = &color_table[0];
-                draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
+            if enable_occ_query {
+                //if visible_node.occluder {
+                    //color = &color_table[0];
+                    //draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
 
-                if draw_occ_frustums {
-                    let view_matrix_camera = &_camera.get_world_to_camera();
+                    // if draw_occ_frustums {
+                    //     let view_matrix_camera = &_camera.get_world_to_camera();
 
-                    let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, view_matrix_camera);
+                    //     let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, view_matrix_camera);
 
-                    let mx_occ_frustum = occ_projection_matrix * view_matrix_camera;
-                    let mx_occ_frustum_inv: Matrix4<f32> = mx_occ_frustum.inverse_transform().unwrap().into();
-                    let mx = mx_camera_octree * mx_occ_frustum_inv;
+                    //     let mx_occ_frustum = occ_projection_matrix * view_matrix_camera;
+                    //     let mx_occ_frustum_inv: Matrix4<f32> = mx_occ_frustum.inverse_transform().unwrap().into();
+                    //     let mx = mx_camera_octree * mx_occ_frustum_inv;
 
-                    // frustum
-                    _outlined_box_drawer.update_color(&color_table[5]);
-                    _outlined_box_drawer.update_transform(&mx);
-                    _outlined_box_drawer.draw();
+                    //     // frustum
+                    //     _outlined_box_drawer.update_color(&color_table[5]);
+                    //     _outlined_box_drawer.update_transform(&mx);
+                    //     _outlined_box_drawer.draw();
+                    // }
+                //}
+                //else 
+                if visible_node.occluded {
+                    //color = &color_table[4];
+                    //draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
+                } else {
+                    color = &color_table[3];
+                    draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);           
                 }
-            }
-            else if visible_node.occluded {
-                color = &color_table[4];
-                draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
             } else {
-                //color = &color_table[3];
-                //draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);           
+                color = &color_table[3];
+                draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color); 
             }
         }
     }
@@ -678,7 +684,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, false);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, enable_occ_query);
         }
 
         window.gl_swap_window();
