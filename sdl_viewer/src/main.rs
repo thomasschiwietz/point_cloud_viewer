@@ -74,7 +74,7 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
     Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
 }
 
-fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, draw_occ_frustums: bool)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -104,18 +104,26 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
                 color = &color_table[0];
                 draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
 
-                let view_matrix_camera = &_camera.get_world_to_camera();
+                if draw_occ_frustums {
+                    let view_matrix_camera = &_camera.get_world_to_camera();
 
-                let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, view_matrix_camera);
+                    let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, view_matrix_camera);
 
-                let mx_occ_frustum = occ_projection_matrix * view_matrix_camera;
-                let mx_occ_frustum_inv: Matrix4<f32> = mx_occ_frustum.inverse_transform().unwrap().into();
-                let mx = mx_camera_octree * mx_occ_frustum_inv;
+                    let mx_occ_frustum = occ_projection_matrix * view_matrix_camera;
+                    let mx_occ_frustum_inv: Matrix4<f32> = mx_occ_frustum.inverse_transform().unwrap().into();
+                    let mx = mx_camera_octree * mx_occ_frustum_inv;
 
-                // frustum
-                _outlined_box_drawer.update_color(&color_table[5]);
-                _outlined_box_drawer.update_transform(&mx);
-                _outlined_box_drawer.draw();
+                    // frustum
+                    _outlined_box_drawer.update_color(&color_table[5]);
+                    _outlined_box_drawer.update_transform(&mx);
+                    _outlined_box_drawer.draw();
+                }
+            }
+            else if visible_node.occluded {
+                color = &color_table[4];
+                draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
+            } else {
+            
             }
         }
     }
@@ -547,6 +555,7 @@ fn main() {
         let mut current_batch = 0;
         let mut num_occluders = 0;
         let mut num_occluded = 0;
+        let mut query_batch_size = 0;
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -602,21 +611,22 @@ fn main() {
                 let mut query_state = false;       // render state or query state
                 let node_count = visible_nodes.len();
                 for i in 0..node_count {
-                    let mut visible_node = &mut visible_nodes[i];
-                    if visible_node.occluded {
-                        continue;
+                    //let mut visible_node = &visible_nodes[i];
+                    if visible_nodes[i].occluded {
+                       continue;
                     }
 
-                    if let Some(view) = node_views.get(&visible_node.id) {
+                    if let Some(view) = node_views.get(&visible_nodes[i].id) {
 
                         if query_state {
-                            gl_query_node.begin_samples_passed();        
+                            gl_query_node.begin_samples_passed();   
+                            query_batch_size += 1;     
                         }
 
                         let node_points_drawn = node_drawer.draw(
                             view,
                             if use_level_of_detail {
-                                visible_node.level_of_detail
+                                visible_nodes[i].level_of_detail
                             } else {
                                 1
                             },
@@ -628,8 +638,9 @@ fn main() {
                             let samples_passed = gl_query_node.query_samples_passed();
 
                             let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
-                            if pass_ratio < 0.1 {
-                                visible_node.occluder = true;
+                            if pass_ratio < 0.05 /*&& num_occluders == 0 */{
+
+                                visible_nodes[i].occluder = true;
                                 num_occluders += 1;
 
                                 let world_to_camera_matrix = camera.get_world_to_camera();
@@ -637,31 +648,19 @@ fn main() {
                                 let mx = occ_projection_matrix * world_to_camera_matrix;
                                 let frustum = Frustum::from_matrix(&mx);
 
-                                for j in i+1..node_count {
-                                    let mut visible_node = &mut visible_nodes[i];                     
-                                     if !frustum.intersects_inside_or_intersect(&visible_node.bounding_cube) {
-                                     }
+                                for j in (i+1)..node_count {
+                                    if visible_nodes[j].occluder {          // this should never happen
+                                        continue;
+                                    }
+                                    if visible_nodes[j].occluded {
+                                       continue;
+                                    }
+                                    if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
+                                        visible_nodes[j].occluded = true;
+                                        num_occluded += 1;
+                                    }
                                 }
-
-                                // let mut culled_nodes = 0;
-                                // for visible_node in &visible_nodes {
-                                //     // need meta data: bounding cube size
-
-                                //     if !frustum.intersects_inside_or_intersect(&visible_node.bounding_cube) {
-                                //         // returns true if inside or intersecting
-                                //         unoccluded_nodes.push(
-                                //             octree::VisibleNode {
-                                //                 id: visible_node.id,
-                                //                 level_of_detail: visible_node.level_of_detail,
-                                //                 pixels: visible_node.pixels,
-                                //                 bounding_cube: visible_node.bounding_cube.clone(),
-                                //             });
-                                //     }
-                                //     else {
-                                //         culled_nodes += 1;
-                                //     }
-                                // }
-                                // println!("culled {} / {} nodes", culled_nodes, visible_nodes.len());
+                                
                             }
                         }
 
@@ -673,7 +672,7 @@ fn main() {
                             draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                         }
                         current_slice_pixel_count += node_points_drawn;
-                        visible_node.slice = current_slice;
+                        //visible_node.slice = current_slice;
                         if current_slice == show_slice {
                             node_count_of_current_slice += 1;
                         }
@@ -686,10 +685,12 @@ fn main() {
                         if !query_state {
                             if current_batch >= batch_size {
                                 query_state = true;
+                                query_batch_size = 0;
                             }
                         } else {
                             // finish query state after one batch
                             query_state = false;
+                            
                             break;
                         }
                     }
@@ -711,7 +712,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, true);
         }
 
         window.gl_swap_window();
@@ -736,13 +737,14 @@ fn main() {
             //     node_count_of_current_slice,
             // );
             println!(
-                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, occluder nodes {}, occluded nodes {}",
+                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}, occluder nodes {}, occluded nodes {}, query batch size {}",
                 fps,
-                samples_passed, num_points_drawn,
-                samples_passed as f32 / num_points_drawn as f32 * 100.,
+                samples_passed, num_points_drawn, samples_passed as f32 / num_points_drawn as f32 * 100.,
                 visible_nodes.len(),
+                num_nodes_drawn,
                 num_occluders,
-                num_occluders,
+                num_occluded,
+                query_batch_size,
             );
         }
     };

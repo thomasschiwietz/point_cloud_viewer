@@ -39,6 +39,7 @@ pub struct VisibleNode {
     pub slice: i32,
     pub occluder: bool,
     pub occluded: bool,
+    pub bounding_cube: Cube,
 }
 
 #[derive(Debug)]
@@ -215,6 +216,7 @@ impl Octree {
                     slice: 0,
                     occluder: false,
                     occluded: false,
+                    bounding_cube: node_to_explore.bounding_cube,
                 }
             );
         }
