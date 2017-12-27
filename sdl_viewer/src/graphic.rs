@@ -102,3 +102,65 @@ impl Drop for GlVertexArray {
         }
     }
 }
+
+pub struct GlQuery {
+    id: GLuint,
+    target: GLuint,
+}
+
+impl GlQuery {
+    pub fn new() -> Self {
+        let mut id = 0;
+        let error;
+        unsafe {
+            gl::GenQueries(1, &mut id);
+            error = gl::GetError();
+        }
+        //println!("create query {}, error = {}", id, error);
+        let target = 0;
+        GlQuery { id, target }
+    }
+
+    fn begin(&self) {
+        let error;
+        unsafe {
+            gl::BeginQuery(self.target, self.id);
+            error = gl::GetError();
+        }
+        //println!("begin query {}, error = {}", self.target, error);
+    }
+
+    pub fn begin_samples_passed(&mut self) {
+        self.target = gl::SAMPLES_PASSED;
+        self.begin();
+    }
+
+    pub fn end(&self) {
+        let error;
+        unsafe {
+            gl::EndQuery(self.target);
+            error = gl::GetError();
+        }
+        //println!("end query {}, error = {}", self.target, error);
+    }
+
+    pub fn query_samples_passed(&mut self) -> u32 {
+        let mut result: u32 = 0;
+        let error;
+        unsafe {
+            gl::GetQueryObjectuiv(self.id, gl::QUERY_RESULT, &mut result);
+            error = gl::GetError();
+        }
+        // println!("result {}, error = {}", result, error);
+        result
+    }
+}
+
+impl Drop for GlQuery {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteQueries(1, &self.id);
+        }
+        //println!("delete query {}", self.id);        
+    }
+}
