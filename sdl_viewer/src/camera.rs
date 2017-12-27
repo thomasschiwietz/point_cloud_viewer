@@ -112,6 +112,12 @@ impl Camera {
         camera
     }
 
+    pub fn set_pos_rot(&mut self, pos: &Vector3<f32>, theta: Deg<f32>, phi: Deg<f32>) {
+        self.theta = Rad::from(theta);
+        self.phi = Rad::from(phi);
+        self.transform.disp = *pos;
+    }
+
     pub fn set_size(&mut self, width: i32, height: i32) {
         self.width = width;
         self.height = height;

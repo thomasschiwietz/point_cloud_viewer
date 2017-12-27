@@ -390,6 +390,7 @@ fn main() {
     let outlined_box_drawer = OutlinedBoxDrawer::new();
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+    camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
     let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
     let mut events = ctx.event_pump().unwrap();
@@ -399,8 +400,8 @@ fn main() {
     let mut show_octree_nodes = false;
     let mut show_octree_view = false;
     let mut use_level_of_detail = true;
-    let mut point_size = 2.;
-    let mut gamma = 1.;
+    let mut point_size = 1.;
+    let mut gamma = 1.3;
     let mut max_number_of_points_per_node = 0;
     let mut main_loop = || {
         for event in events.poll_iter() {
