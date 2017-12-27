@@ -125,6 +125,11 @@ impl Camera {
             make_projection_matrix(0.1, 10000., Deg(45.), 1., width as f32 / height as f32);
     }
 
+    pub fn get_world_to_camera(&self) -> Matrix4<f32> {
+        let world_to_camera: Matrix4<f32> = self.transform.inverse_transform().unwrap().into();
+        world_to_camera
+    }
+
     pub fn get_world_to_gl(&self) -> Matrix4<f32> {
         let world_to_camera: Matrix4<f32> = self.transform.inverse_transform().unwrap().into();
         self.projection_matrix * world_to_camera

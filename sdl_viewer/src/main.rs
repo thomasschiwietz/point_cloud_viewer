@@ -106,8 +106,21 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
             if visible_node.occluder {
                 color = &color_table[0];
                 draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
+
                 let cube = &view.meta.bounding_cube;
-                let occ_projection = get_occlusion_projection_matrix(cube.edge_length(), &cube.min(), &_camera.get_world_to_gl());
+
+                let view_matrix_camera = &_camera.get_world_to_camera();
+
+                let occ_projection_matrix = get_occlusion_projection_matrix(cube.edge_length(), &cube.min(), view_matrix_camera);
+
+                let mx_occ_frustum = occ_projection_matrix * view_matrix_camera;
+                let mx_occ_frustum_inv: Matrix4<f32> = mx_occ_frustum.inverse_transform().unwrap().into();
+                let mx = mx_camera_octree * mx_occ_frustum_inv;
+
+                // frustum
+                _outlined_box_drawer.update_color(&color_table[5]);
+                _outlined_box_drawer.update_transform(&mx);
+                _outlined_box_drawer.draw();
             }
         }
     }
@@ -647,6 +660,7 @@ fn main() {
                         } else {
                             // finish query state after one batch
                             query_state = false;
+                            break;
                         }
                     }
                 }
