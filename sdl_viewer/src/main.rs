@@ -406,6 +406,8 @@ fn main() {
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
     let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
     let mut show_slice = 0;
+    let mut enable_slice_limit = false;
+    let mut slice_limit = 10;
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
@@ -439,6 +441,9 @@ fn main() {
                         Scancode::Num0 => point_size += 0.1,
                         Scancode::U => { show_slice -= 1; println!("show slice {}", show_slice) },
                         Scancode::I => { show_slice += 1; println!("show slice {}", show_slice) },
+                        Scancode::G => enable_slice_limit = !enable_slice_limit,
+                        Scancode::H => { slice_limit -= 1; println!("slice_limit {}", slice_limit) },
+                        Scancode::J => { slice_limit += 1; println!("slice_limit {}", slice_limit) },
                         _ => (),
                     }
                 }
@@ -471,7 +476,7 @@ fn main() {
         }
 
         if camera.update() {
-            use_level_of_detail = true;
+            use_level_of_detail = false;
             node_drawer.update_world_to_gl(&camera.get_world_to_gl());
             visible_nodes = octree.get_visible_nodes(
                 &camera.get_world_to_gl(),
@@ -492,7 +497,7 @@ fn main() {
             gl::ClearColor(0., 0., 0., 1.);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-            let slice_pixel_count: i64 = 2 * camera.width as i64 * camera.height as i64;
+            let slice_pixel_count: i64 = camera.width as i64 * camera.height as i64;
             let mut current_slice_pixel_count = 0;
 
             for i in 0..visible_nodes.len() {
@@ -525,6 +530,12 @@ fn main() {
                 if current_slice_pixel_count >= slice_pixel_count {
                     current_slice += 1;
                     current_slice_pixel_count = 0;
+                }
+
+                if enable_slice_limit {
+                    if current_slice >= slice_limit {
+                        break;
+                    }
                 }
             }
         }
