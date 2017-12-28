@@ -469,6 +469,7 @@ fn main() {
     let mut batch_size = 10;
 
     let mut gl_framebuffer = GlFramebuffer::new();
+    gl_framebuffer.set_size(camera.width, camera.height);
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
@@ -529,6 +530,7 @@ fn main() {
                 Event::Window { win_event: WindowEvent::SizeChanged(w, h), .. } => {
                     camera.set_size(w, h);
                     camera_octree.set_size(w / 2, h / 2);
+                    gl_framebuffer.set_size(camera.width, camera.height);
                 }
                 _ => (),
             }
