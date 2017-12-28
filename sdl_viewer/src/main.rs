@@ -551,7 +551,9 @@ fn main() {
         let mut current_slice_pixel_count = 0;
 
         gl_query.begin_samples_passed();
+
         let mut current_batch = 0;
+        let mut num_queries = 0;
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -637,8 +639,8 @@ fn main() {
                                         visible_nodes[j].occluded = true;
                                     }
                                 }
-                                
                             }
+                            num_queries += 1;
                         }
 
                         num_points_drawn += node_points_drawn;
@@ -699,11 +701,12 @@ fn main() {
             num_frames = 0;
             last_log = now;
             println!(
-                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}",
+                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}, queries {}",
                 fps,
                 samples_passed, num_points_drawn, samples_passed as f32 / num_points_drawn as f32 * 100.,
                 visible_nodes.len(),
                 num_nodes_drawn,
+                num_queries,
             );
         }
     };
