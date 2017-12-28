@@ -565,12 +565,12 @@ fn main() {
         let mut current_batch = 0;
         let mut num_queries = 0;
 
-        unsafe {
-            gl::Viewport(0, 0, camera.width, camera.height);
-            gl::ClearColor(0., 0., 0., 1.);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        }
-        gl_framebuffer.bind();
+        // unsafe {
+        //     gl::Viewport(0, 0, camera.width, camera.height);
+        //     gl::ClearColor(0., 0., 0., 1.);
+        //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        // }
+        // gl_framebuffer.bind();
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -688,22 +688,22 @@ fn main() {
                 }
             }
         }
-        gl_framebuffer.unbind();
-        quad_drawer.draw(gl_framebuffer.depth_texture.id);
-        
+       
+        //gl_framebuffer.unbind();
+        //quad_drawer.draw(gl_framebuffer.depth_texture.id);
 
         // copy depth buffer to texture
-        // if show_depth_buffer {
-        //     unsafe {
-        //         gl::BindTexture(gl::TEXTURE_2D, gl_depth_texture.id);
-        //         gl::ReadBuffer(gl::BACK);
-        //         gl::CopyTexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT, 0, 0, camera.width, camera.height, 0);
+        if show_depth_buffer {
+            unsafe {
+                gl::BindTexture(gl::TEXTURE_2D, gl_depth_texture.id);
+                gl::ReadBuffer(gl::BACK);
+                gl::CopyTexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT, 0, 0, camera.width, camera.height, 0);
 
-        //         quad_drawer.draw(gl_depth_texture.id);
+                quad_drawer.draw(gl_depth_texture.id);
 
-        //         gl::BindTexture(gl::TEXTURE_2D, 0);
-        //     }
-        // }
+                gl::BindTexture(gl::TEXTURE_2D, 0);
+            }
+        }
 
 
         gl_query.end();

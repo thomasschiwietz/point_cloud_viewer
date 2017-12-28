@@ -43,7 +43,6 @@ impl QuadDrawer {
         unsafe {
             gl::UseProgram(program.id);
             u_texture_id = gl::GetUniformLocation(program.id, c_str!("aTex"));
-            println!("textureid {}", u_texture_id);
         }
 
         let vertex_array = GlVertexArray::new();
@@ -95,9 +94,6 @@ impl QuadDrawer {
                 ptr::null(),
             );
         }
-        unsafe {
-            println!("quad: gl error {}", gl::GetError());
-        }
         QuadDrawer {
             program,
             u_texture_id,
@@ -111,17 +107,13 @@ impl QuadDrawer {
         self.vertex_array.bind();
 
         unsafe {
-            //println!("preuse: gl error {}", gl::GetError());
             gl::UseProgram(self.program.id);
-            //println!("predisbale: gl error {}", gl::GetError());
-            //gl::Disable(gl::DEPTH);
-            //println!("prebind: gl error {}", gl::GetError());
+            //gl::Disable(gl::DEPTH);           // causes opengl error?
 
             // bind texture
             gl::Uniform1i(self.u_texture_id, 0);       // assign texture unit 0
             gl::ActiveTexture(gl::TEXTURE0 + 0);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
-            println!("bind: gl error {}", gl::GetError());
 
             gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
 
