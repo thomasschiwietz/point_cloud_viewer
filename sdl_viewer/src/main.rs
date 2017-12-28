@@ -471,6 +471,8 @@ fn main() {
     let mut gl_framebuffer = GlFramebuffer::new();
     gl_framebuffer.set_size(camera.width, camera.height);
 
+    let mut show_depth_buffer = false;
+
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
     let mut last_log = time::PreciseTime::now();
@@ -504,6 +506,7 @@ fn main() {
                         Scancode::B => enable_occ_query = !enable_occ_query,
                         Scancode::N => { batch_size -= 1; println!("batch_size {}", batch_size) },
                         Scancode::M => { batch_size += 1; println!("batch_size {}", batch_size) },
+                        Scancode::X => show_depth_buffer = !show_depth_buffer,
                         _ => (), 
                     }
                 }
@@ -561,13 +564,13 @@ fn main() {
         let mut current_batch = 0;
         let mut num_queries = 0;
 
-        unsafe {
-            gl::Viewport(0, 0, camera.width, camera.height);
-            gl::ClearColor(0., 0., 0., 1.);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        }
+        // unsafe {
+        //     gl::Viewport(0, 0, camera.width, camera.height);
+        //     gl::ClearColor(0., 0., 0., 1.);
+        //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        // }
 
-        gl_framebuffer.bind();
+        // gl_framebuffer.bind();
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -685,9 +688,33 @@ fn main() {
                 }
             }
         }
-        gl_framebuffer.unbind();
+        //gl_framebuffer.unbind();
 
-        quad_drawer.draw(gl_framebuffer.depth_texture_id);
+        // copy depth buffer to texture
+        if show_depth_buffer {
+            let mut texture_id = 0;
+            unsafe {
+                gl::GenTextures(1, &mut texture_id);
+                gl::BindTexture(gl::TEXTURE_2D, texture_id);
+                gl::TexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT32 as i32, camera.width, camera.height, 0, gl::DEPTH_COMPONENT, gl::FLOAT, ptr::null());
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_FUNC, gl::LEQUAL as i32);
+                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_MODE, gl::NONE as i32);
+                
+                gl::ReadBuffer(gl::BACK);
+                gl::CopyTexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT, 0, 0, camera.width, camera.height, 0);
+
+                quad_drawer.draw(texture_id);
+
+                gl::DeleteTextures(1, &texture_id);
+
+                gl::BindTexture(gl::TEXTURE_2D, 0);
+            }
+        }
+
 
         gl_query.end();
 
