@@ -169,6 +169,7 @@ impl Drop for GlQuery {
 pub struct GlFramebuffer {
     frame_buffer_id: GLuint,
     pub color_texture_id: GLuint,
+    pub depth_texture_id: GLuint,
     depth_buffer_id: GLuint,
 }
 
@@ -176,69 +177,91 @@ impl GlFramebuffer {
     pub fn new() -> Self {
         let mut frame_buffer_id = 0;
         let mut color_texture_id = 0;
+        let mut depth_texture_id = 0;
         let mut depth_buffer_id = 0;
 
         let width = 800;
         let height = 600;
 
         unsafe {
+            // create frame buffer
             gl::GenFramebuffers(1, &mut frame_buffer_id);
             println!("fb {}, err {}", frame_buffer_id, gl::GetError());
-
             gl::BindFramebuffer(gl::FRAMEBUFFER, frame_buffer_id);
 
-            // create color buffer
+            // create color texture
             gl::GenTextures(1, &mut color_texture_id);
-
-            // "Bind" the newly created texture : all future texture functions will modify this texture
             gl::BindTexture(gl::TEXTURE_2D, color_texture_id);
-
-            // Give an empty image to OpenGL ( the last "0" )
             gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, width, height, 0, gl::RGB, gl::UNSIGNED_BYTE, ptr::null());
-
-            // Poor filtering. Needed !
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-
+            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, color_texture_id, 0);            
             println!("color {}, err {}", color_texture_id, gl::GetError());
+
+            // creste depth texture
+            gl::GenTextures(1, &mut depth_texture_id);
+            gl::BindTexture(gl::TEXTURE_2D, depth_texture_id);
+            gl::TexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT32 as i32, width, height, 0, gl::DEPTH_COMPONENT, gl::FLOAT, ptr::null());
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_FUNC, gl::LEQUAL as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_MODE, gl::NONE as i32);
+            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, depth_texture_id, 0);            
+            println!("depth {}, err {}", depth_texture_id, gl::GetError());
 
             // The depth buffer
             gl::GenRenderbuffers(1, &mut depth_buffer_id);
             gl::BindRenderbuffer(gl::RENDERBUFFER, depth_buffer_id);
             gl::RenderbufferStorage(gl::RENDERBUFFER, gl::DEPTH_COMPONENT, width, height);
-            gl::FramebufferRenderbuffer(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, gl::RENDERBUFFER, depth_buffer_id);
-
+            //gl::FramebufferRenderbuffer(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, gl::RENDERBUFFER, depth_buffer_id);
             println!("depth {}, err {}", depth_buffer_id, gl::GetError());
 
-            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, color_texture_id, 0);
-
             // Set the list of draw buffers.
-            let mut draw_buffers: [GLenum; 1] = [gl::COLOR_ATTACHMENT0];
-            gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]); // "1" is the size of DrawBuffers
+            //let mut draw_buffers: [GLenum; 1] = [gl::COLOR_ATTACHMENT0];
+            //gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]);
 
+            // error checks
             println!("err {}", gl::GetError());
-
             if (gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE) {
                 println!("fb not complete");                
             }
+            else {
+                println!("frame buffer creation success");
+            }
 
-            // unbind
+            // unbind texture
+            gl::BindTexture(gl::TEXTURE_2D, 0);            
+
+            // unbind frame buffer
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-            
+
+            println!("err {}", gl::GetError());            
         }
-        GlFramebuffer { frame_buffer_id, color_texture_id, depth_buffer_id }
+        GlFramebuffer { frame_buffer_id, color_texture_id, depth_texture_id, depth_buffer_id }
     }
 
     pub fn bind(&self) {
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
             gl::Viewport(0, 0, 800, 600);
+
+            //let mut draw_buffers: [GLenum; 1] = [gl::COLOR_ATTACHMENT0];
+            //gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]);
+
+            println!("bind err {}", gl::GetError());
+            
         }
     }
 
     pub fn unbind(&self) {
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+            //gl::DrawBuffer(gl::BACK);
+
+            println!("unbind err {}", gl::GetError());
+            
         }
     }
 }
@@ -246,9 +269,12 @@ impl GlFramebuffer {
 impl Drop for GlFramebuffer {
     fn drop(&mut self) {
         unsafe {
+            // gl::DeleteTextures(1, &self.color_texture_id);
+            // gl::DeleteTextures(1, &self.depth_texture_id);
+            //gl::DeleteRenderbuffers(1, &self.depth_buffer_id);
+            self.unbind();
             gl::DeleteFramebuffers(1, &self.frame_buffer_id);
-            gl::DeleteTextures(1, &self.color_texture_id);
-            gl::DeleteRenderbuffers(1, &self.depth_buffer_id);
+
         }
     }
 }

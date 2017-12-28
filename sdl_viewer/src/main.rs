@@ -685,7 +685,7 @@ fn main() {
         }
         gl_framebuffer.unbind();
 
-        quad_drawer.draw(gl_framebuffer.color_texture_id);
+        quad_drawer.draw(gl_framebuffer.depth_texture_id);
 
         gl_query.end();
 

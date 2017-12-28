@@ -111,9 +111,22 @@ impl QuadDrawer {
         self.vertex_array.bind();
 
         unsafe {
+            //println!("preuse: gl error {}", gl::GetError());
             gl::UseProgram(self.program.id);
-            gl::Disable(gl::DEPTH);
+            //println!("predisbale: gl error {}", gl::GetError());
+            //gl::Disable(gl::DEPTH);
+            //println!("prebind: gl error {}", gl::GetError());
+
+            // bind texture
+            gl::Uniform1i(self.u_texture_id, 0);       // assign texture unit 0
+            gl::ActiveTexture(gl::TEXTURE0 + 0);
+            gl::BindTexture(gl::TEXTURE_2D, texture_id);
+            println!("bind: gl error {}", gl::GetError());
+
             gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
+
+            gl::BindTexture(gl::TEXTURE_2D, 0);
+
         }
     }
 }
