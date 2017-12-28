@@ -172,7 +172,7 @@ enum TextureType {
 }
 
 pub struct GlTexture {
-    pub texture_id: GLuint,
+    pub id: GLuint,
     texture_type: TextureType,
 }
 
@@ -180,33 +180,33 @@ impl GlTexture {
     pub fn new_color(width: i32, height: i32) -> Self {
 
         let texture_type = TextureType::Color;
-        let texture_id = GlTexture::create_texture(width, height, &texture_type);
+        let id = GlTexture::create_texture(width, height, &texture_type);
 
-        GlTexture { texture_id, texture_type }
+        GlTexture { id, texture_type }
     }
 
     pub fn new_depth(width: i32, height: i32) -> Self {
 
         let texture_type = TextureType::Depth;
-        let texture_id = GlTexture::create_texture(width, height, &texture_type);
+        let id = GlTexture::create_texture(width, height, &texture_type);
 
-        GlTexture { texture_id, texture_type }
+        GlTexture { id, texture_type }
     }
 
     pub fn set_size(&mut self, width: i32, height: i32) {
         unsafe {
-            gl::DeleteTextures(1, &self.texture_id);
+            gl::DeleteTextures(1, &self.id);
         }
 
-        self.texture_id = GlTexture::create_texture(width, height, &self.texture_type);
+        self.id = GlTexture::create_texture(width, height, &self.texture_type);
     }
 
     fn create_texture(width: i32, height: i32, texture_type: &TextureType) -> GLuint {
-        let mut texture_id = 0;
+        let mut id = 0;
         unsafe {
             // creste depth texture
-            gl::GenTextures(1, &mut texture_id);
-            gl::BindTexture(gl::TEXTURE_2D, texture_id);
+            gl::GenTextures(1, &mut id);
+            gl::BindTexture(gl::TEXTURE_2D, id);
 
             match *texture_type {
                 TextureType::Color => {
@@ -227,14 +227,14 @@ impl GlTexture {
 
             gl::BindTexture(gl::TEXTURE_2D, 0);            
         }
-        texture_id
+        id
     }
 }
 
 impl Drop for GlTexture {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteTextures(1, &self.texture_id);
+            gl::DeleteTextures(1, &self.id);
         }
     }
 }
@@ -254,39 +254,34 @@ impl GlFramebuffer {
         unsafe {
             // create frame buffer
             gl::GenFramebuffers(1, &mut frame_buffer_id);
+        }
+
+        GlFramebuffer::attach(frame_buffer_id, color_texture.id, depth_texture.id);
+
+        GlFramebuffer { frame_buffer_id, color_texture, depth_texture }
+    }
+
+    fn attach(frame_buffer_id: GLuint, color_texture_id: GLuint, depth_texture_id: GLuint) {
+         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, frame_buffer_id);
-            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, color_texture.texture_id, 0);            
-            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, depth_texture.texture_id, 0);            
+
+            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, color_texture_id, 0);            
+            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, depth_texture_id, 0);            
 
             // error checks
             if (gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE) {
                 println!("fb not complete");                
             }
 
-            // unbind frame buffer
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-        }
-
-        GlFramebuffer { frame_buffer_id, color_texture, depth_texture }
+        }       
     }
 
     pub fn set_size(&mut self, width: i32, height: i32) {
         self.unbind();
         self.color_texture.set_size(width, height);
         self.depth_texture.set_size(width, height);
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
-            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, self.color_texture.texture_id, 0);            
-            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, self.depth_texture.texture_id, 0);            
-
-            // error checks
-            if (gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE) {
-                println!("fb not complete");                
-            }
-
-            // unbind frame buffer
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-        }
+        GlFramebuffer::attach(self.frame_buffer_id, self.color_texture.id, self.depth_texture.id);
     }
 
     pub fn bind(&self) {
