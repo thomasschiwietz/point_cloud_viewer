@@ -21,12 +21,14 @@ use std::mem;
 use std::ptr;
 use cgmath::{Array, Matrix, Matrix4};
 
-const FRAGMENT_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/quad_drawer.fs");
-const VERTEX_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/quad_drawer.vs");
+const FRAGMENT_SHADER_QUAD: &'static str = include_str!("../shaders/quad_drawer.fs");
+const VERTEX_SHADER_QUAD: &'static str = include_str!("../shaders/quad_drawer.vs");
 
 pub struct QuadDrawer
 {
     program: GlProgram,
+
+    u_texture_id: GLint,
 
     // vertex array and buffers
     vertex_array: GlVertexArray,
@@ -36,10 +38,12 @@ pub struct QuadDrawer
 
 impl QuadDrawer {
     pub fn new() -> Self {
-        let program = GlProgram::new(VERTEX_SHADER_OUTLINED_BOX, FRAGMENT_SHADER_OUTLINED_BOX);  
-    
+        let program = GlProgram::new(VERTEX_SHADER_QUAD, FRAGMENT_SHADER_QUAD);  
+        let u_texture_id;
         unsafe {
             gl::UseProgram(program.id);
+            u_texture_id = gl::GetUniformLocation(program.id, c_str!("aTex"));
+            println!("textureid {}", u_texture_id);
         }
 
         let vertex_array = GlVertexArray::new();
@@ -96,13 +100,14 @@ impl QuadDrawer {
         }
         QuadDrawer {
             program,
+            u_texture_id,
             vertex_array,
             _buffer_position,
             _buffer_indices
         }        
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&self, texture_id: GLuint) {
         self.vertex_array.bind();
 
         unsafe {

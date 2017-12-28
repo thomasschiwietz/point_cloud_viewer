@@ -168,7 +168,7 @@ impl Drop for GlQuery {
 
 pub struct GlFramebuffer {
     frame_buffer_id: GLuint,
-    color_texture_id: GLuint,
+    pub color_texture_id: GLuint,
     depth_buffer_id: GLuint,
 }
 

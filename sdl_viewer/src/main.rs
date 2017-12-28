@@ -559,7 +559,13 @@ fn main() {
         let mut current_batch = 0;
         let mut num_queries = 0;
 
-        //gl_framebuffer.bind();
+        unsafe {
+            gl::Viewport(0, 0, camera.width, camera.height);
+            gl::ClearColor(0., 0., 0., 1.);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        }
+
+        gl_framebuffer.bind();
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -677,10 +683,9 @@ fn main() {
                 }
             }
         }
-        //gl_framebuffer.unbind();
+        gl_framebuffer.unbind();
 
-
-        quad_drawer.draw();
+        quad_drawer.draw(gl_framebuffer.color_texture_id);
 
         gl_query.end();
 
