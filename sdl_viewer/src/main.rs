@@ -33,7 +33,7 @@ use sdl2::video::GLProfile;
 use sdl_viewer::{Camera, gl};
 use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
-use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery};
+use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlFramebuffer};
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
@@ -463,13 +463,15 @@ fn main() {
 
     let mut gl_query = GlQuery::new();
     let mut gl_query_node = GlQuery::new();
-    let mut enable_occ_query = true;
+    let mut enable_occ_query = false;
     let mut batch_size = 10;
+
+    let mut gl_framebuffer = GlFramebuffer::new();
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
     let mut last_log = time::PreciseTime::now();
-    let mut force_load_all = true;
+    let mut force_load_all = false;
     let mut show_octree_nodes = false;
     let mut show_octree_view = false;
     let mut use_level_of_detail = true;

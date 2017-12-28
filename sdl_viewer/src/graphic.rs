@@ -15,9 +15,10 @@
 //! Higher level abstractions around core OpenGL concepts.
 
 use gl;
-use gl::types::GLuint;
+use gl::types::{GLenum, GLuint};
 use glhelper::{compile_shader, link_program};
 use std::str;
+use std::ptr;
 
 pub struct GlProgram {
     pub id: GLuint,
@@ -162,5 +163,90 @@ impl Drop for GlQuery {
             gl::DeleteQueries(1, &self.id);
         }
         //println!("delete query {}", self.id);        
+    }
+}
+
+pub struct GlFramebuffer {
+    frame_buffer_id: GLuint,
+    color_texture_id: GLuint,
+    depth_buffer_id: GLuint,
+}
+
+impl GlFramebuffer {
+    pub fn new() -> Self {
+        let mut frame_buffer_id = 0;
+        let mut color_texture_id = 0;
+        let mut depth_buffer_id = 0;
+
+        let width = 800;
+        let height = 600;
+
+        unsafe {
+            gl::GenFramebuffers(1, &mut frame_buffer_id);
+            println!("fb {}, err {}", frame_buffer_id, gl::GetError());
+
+            gl::BindFramebuffer(gl::FRAMEBUFFER, frame_buffer_id);
+
+            // create color buffer
+            gl::GenTextures(1, &mut color_texture_id);
+
+            // "Bind" the newly created texture : all future texture functions will modify this texture
+            gl::BindTexture(gl::TEXTURE_2D, color_texture_id);
+
+            // Give an empty image to OpenGL ( the last "0" )
+            gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, width, height, 0, gl::RGB, gl::UNSIGNED_BYTE, ptr::null());
+
+            // Poor filtering. Needed !
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+
+            println!("color {}, err {}", color_texture_id, gl::GetError());
+
+            // The depth buffer
+            gl::GenRenderbuffers(1, &mut depth_buffer_id);
+            gl::BindRenderbuffer(gl::RENDERBUFFER, depth_buffer_id);
+            gl::RenderbufferStorage(gl::RENDERBUFFER, gl::DEPTH_COMPONENT, width, height);
+            gl::FramebufferRenderbuffer(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, gl::RENDERBUFFER, depth_buffer_id);
+
+            println!("depth {}, err {}", depth_buffer_id, gl::GetError());
+
+            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, color_texture_id, 0);
+
+            // Set the list of draw buffers.
+            let mut draw_buffers = Vec::new();
+            draw_buffers.push(gl::COLOR_ATTACHMENT0);
+            gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]); // "1" is the size of DrawBuffers
+
+            println!("err {}", gl::GetError());
+
+            if (gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE) {
+                println!("fb not complete");                
+            }
+
+            // unbind
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+            
+        }
+        GlFramebuffer { frame_buffer_id, color_texture_id, depth_buffer_id }
+    }
+
+    pub fn bind(&self) {
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
+        }
+    }
+
+    pub fn unbind() {
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+        }
+    }
+}
+
+impl Drop for GlFramebuffer {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteFramebuffers(1, &self.frame_buffer_id);
+        }
     }
 }
