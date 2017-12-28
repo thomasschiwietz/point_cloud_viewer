@@ -213,8 +213,7 @@ impl GlFramebuffer {
             gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, color_texture_id, 0);
 
             // Set the list of draw buffers.
-            let mut draw_buffers = Vec::new();
-            draw_buffers.push(gl::COLOR_ATTACHMENT0);
+            let mut draw_buffers: [GLenum; 1] = [gl::COLOR_ATTACHMENT0];
             gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]); // "1" is the size of DrawBuffers
 
             println!("err {}", gl::GetError());

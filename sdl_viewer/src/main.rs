@@ -32,6 +32,7 @@ use sdl2::keyboard::Scancode;
 use sdl2::video::GLProfile;
 use sdl_viewer::{Camera, gl};
 use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
+use sdl_viewer::quad_drawer::QuadDrawer;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
 use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlFramebuffer};
 use std::collections::{HashMap, HashSet};
@@ -456,6 +457,7 @@ fn main() {
     let mut visible_nodes = Vec::new();
 
     let outlined_box_drawer = OutlinedBoxDrawer::new();
+    let quad_drawer = QuadDrawer::new();
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
@@ -557,7 +559,7 @@ fn main() {
         let mut current_batch = 0;
         let mut num_queries = 0;
 
-        gl_framebuffer.bind();
+        //gl_framebuffer.bind();
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -675,8 +677,10 @@ fn main() {
                 }
             }
         }
+        //gl_framebuffer.unbind();
 
-        gl_framebuffer.unbind();
+
+        quad_drawer.draw();
 
         gl_query.end();
 

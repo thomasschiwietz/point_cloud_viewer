@@ -35,4 +35,4 @@ pub mod graphic;
 pub use camera::Camera;
 
 pub mod boxdrawer;
-
+pub mod quad_drawer;
