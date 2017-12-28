@@ -243,6 +243,8 @@ pub struct GlFramebuffer {
     frame_buffer_id: GLuint,
     pub color_texture: GlTexture,
     pub depth_texture: GlTexture,
+    pub width: i32,
+    pub height: i32,
 }
 
 impl GlFramebuffer {
@@ -258,7 +260,7 @@ impl GlFramebuffer {
 
         GlFramebuffer::attach(frame_buffer_id, color_texture.id, depth_texture.id);
 
-        GlFramebuffer { frame_buffer_id, color_texture, depth_texture }
+        GlFramebuffer { frame_buffer_id, color_texture, depth_texture, width, height }
     }
 
     fn attach(frame_buffer_id: GLuint, color_texture_id: GLuint, depth_texture_id: GLuint) {
@@ -287,17 +289,18 @@ impl GlFramebuffer {
     pub fn bind(&self) {
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
-            gl::Viewport(0, 0, 800, 600);
+            gl::Viewport(0, 0, self.width, self.height);
 
-            //let mut draw_buffers: [GLenum; 1] = [gl::COLOR_ATTACHMENT0];
-            //gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]);
+            let mut draw_buffers: [GLenum; 1] = [gl::COLOR_ATTACHMENT0];
+            gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]);
         }
     }
 
     pub fn unbind(&self) {
         unsafe {
+            // reset original viewport!
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-            //gl::DrawBuffer(gl::BACK);
+            gl::DrawBuffer(gl::BACK);
         }
     }
 }

@@ -33,6 +33,7 @@ use sdl2::video::GLProfile;
 use sdl_viewer::{Camera, gl};
 use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
 use sdl_viewer::quad_drawer::QuadDrawer;
+use sdl_viewer::reduction::Reduction;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
 use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlFramebuffer, GlTexture};
 use std::collections::{HashMap, HashSet};
@@ -458,6 +459,7 @@ fn main() {
 
     let outlined_box_drawer = OutlinedBoxDrawer::new();
     let quad_drawer = QuadDrawer::new();
+    let reduction = Reduction::new();
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
@@ -471,6 +473,7 @@ fn main() {
     let mut gl_framebuffer = GlFramebuffer::new(camera.width, camera.height);
 
     let mut show_depth_buffer = false;
+    let mut show_reduced_depth_buffer = false;
     let mut gl_depth_texture = GlTexture::new_depth(camera.width, camera.height);
 
     let mut events = ctx.event_pump().unwrap();
@@ -507,6 +510,7 @@ fn main() {
                         Scancode::N => { batch_size -= 1; println!("batch_size {}", batch_size) },
                         Scancode::M => { batch_size += 1; println!("batch_size {}", batch_size) },
                         Scancode::X => show_depth_buffer = !show_depth_buffer,
+                        Scancode::C => show_reduced_depth_buffer = !show_reduced_depth_buffer,
                         _ => (), 
                     }
                 }
@@ -688,19 +692,35 @@ fn main() {
                 }
             }
         }
-       
-        //gl_framebuffer.unbind();
-        //quad_drawer.draw(gl_framebuffer.depth_texture.id);
 
-        // copy depth buffer to texture
         if show_depth_buffer {
+            // copy depth buffer to texture
             unsafe {
                 gl::BindTexture(gl::TEXTURE_2D, gl_depth_texture.id);
                 gl::ReadBuffer(gl::BACK);
                 gl::CopyTexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT, 0, 0, camera.width, camera.height, 0);
+            }
 
+            if !show_reduced_depth_buffer {
                 quad_drawer.draw(gl_depth_texture.id);
+            } else {
+                gl_framebuffer.set_size(camera.width / 8, camera.height / 8);
+                gl_framebuffer.bind();
+                unsafe {
+                    gl::ClearColor(0., 0., 0., 1.);
+                    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+                }
+                reduction.draw(gl_depth_texture.id);
+                
+                gl_framebuffer.unbind();
 
+                unsafe {
+                    gl::Clear(gl::DEPTH_BUFFER_BIT);
+                }
+                quad_drawer.draw(gl_framebuffer.color_texture.id);
+            }
+
+            unsafe {
                 gl::BindTexture(gl::TEXTURE_2D, 0);
             }
         }

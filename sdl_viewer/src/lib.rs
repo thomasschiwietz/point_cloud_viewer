@@ -36,3 +36,4 @@ pub use camera::Camera;
 
 pub mod boxdrawer;
 pub mod quad_drawer;
+pub mod reduction;
