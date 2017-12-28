@@ -166,6 +166,69 @@ impl Drop for GlQuery {
     }
 }
 
+enum TextureType {
+    Color,
+    Depth,
+}
+
+pub struct GlTexture {
+    pub texture_id: GLuint,
+    texture_type: TextureType,
+}
+
+impl GlTexture {
+    pub fn new_depth(width: i32, height: i32) -> Self {
+
+        let texture_type = TextureType::Depth;
+        let texture_id = GlTexture::create_texture(width, height, &texture_type);
+
+        GlTexture { texture_id, texture_type }
+    }
+
+    pub fn set_size(&mut self, width: i32, height: i32) {
+        unsafe {
+            gl::DeleteTextures(1, &self.texture_id);
+        }
+
+        self.texture_id = GlTexture::create_texture(width, height, &self.texture_type);
+    }
+
+    fn create_texture(width: i32, height: i32, texture_type: &TextureType) -> GLuint {
+        let mut texture_id = 0;
+        unsafe {
+            // creste depth texture
+            gl::GenTextures(1, &mut texture_id);
+            gl::BindTexture(gl::TEXTURE_2D, texture_id);
+
+            match *texture_type {
+                TextureType::Color => {
+                    gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, width, height, 0, gl::RGB, gl::UNSIGNED_BYTE, ptr::null());
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+                },
+                TextureType::Depth => {
+                    gl::TexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT32 as i32, width, height, 0, gl::DEPTH_COMPONENT, gl::FLOAT, ptr::null());
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_FUNC, gl::LEQUAL as i32);
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_MODE, gl::NONE as i32);
+                }
+            };
+        }
+        texture_id
+    }
+}
+
+impl Drop for GlTexture {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteTextures(1, &self.texture_id);
+        }
+    }
+}
+
 pub struct GlFramebuffer {
     frame_buffer_id: GLuint,
     pub color_texture_id: GLuint,

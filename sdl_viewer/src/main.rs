@@ -34,7 +34,7 @@ use sdl_viewer::{Camera, gl};
 use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
 use sdl_viewer::quad_drawer::QuadDrawer;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
-use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlFramebuffer};
+use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlFramebuffer, GlTexture};
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
@@ -472,6 +472,7 @@ fn main() {
     gl_framebuffer.set_size(camera.width, camera.height);
 
     let mut show_depth_buffer = false;
+    let mut gl_depth_texture = GlTexture::new_depth(camera.width, camera.height);
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
@@ -534,6 +535,7 @@ fn main() {
                     camera.set_size(w, h);
                     camera_octree.set_size(w / 2, h / 2);
                     gl_framebuffer.set_size(camera.width, camera.height);
+                    gl_depth_texture.set_size(camera.width, camera.height);
                 }
                 _ => (),
             }
@@ -692,24 +694,12 @@ fn main() {
 
         // copy depth buffer to texture
         if show_depth_buffer {
-            let mut texture_id = 0;
             unsafe {
-                gl::GenTextures(1, &mut texture_id);
-                gl::BindTexture(gl::TEXTURE_2D, texture_id);
-                gl::TexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT32 as i32, camera.width, camera.height, 0, gl::DEPTH_COMPONENT, gl::FLOAT, ptr::null());
-                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
-                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
-                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_FUNC, gl::LEQUAL as i32);
-                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_MODE, gl::NONE as i32);
-                
+                gl::BindTexture(gl::TEXTURE_2D, gl_depth_texture.texture_id);
                 gl::ReadBuffer(gl::BACK);
                 gl::CopyTexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT, 0, 0, camera.width, camera.height, 0);
 
-                quad_drawer.draw(texture_id);
-
-                gl::DeleteTextures(1, &texture_id);
+                quad_drawer.draw(gl_depth_texture.texture_id);
 
                 gl::BindTexture(gl::TEXTURE_2D, 0);
             }
