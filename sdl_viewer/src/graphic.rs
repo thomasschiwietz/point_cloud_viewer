@@ -233,10 +233,11 @@ impl GlFramebuffer {
     pub fn bind(&self) {
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
+            gl::Viewport(0, 0, 800, 600);
         }
     }
 
-    pub fn unbind() {
+    pub fn unbind(&self) {
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
@@ -247,6 +248,8 @@ impl Drop for GlFramebuffer {
     fn drop(&mut self) {
         unsafe {
             gl::DeleteFramebuffers(1, &self.frame_buffer_id);
+            gl::DeleteTextures(1, &self.color_texture_id);
+            gl::DeleteRenderbuffers(1, &self.depth_buffer_id);
         }
     }
 }

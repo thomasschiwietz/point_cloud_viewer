@@ -557,6 +557,8 @@ fn main() {
         let mut current_batch = 0;
         let mut num_queries = 0;
 
+        gl_framebuffer.bind();
+
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
             gl::ClearColor(0., 0., 0., 1.);
@@ -674,6 +676,8 @@ fn main() {
             }
         }
 
+        gl_framebuffer.unbind();
+
         gl_query.end();
 
         if force_load_all {
@@ -695,6 +699,11 @@ fn main() {
 
         let samples_passed = gl_query.query_samples_passed();
 
+        let err;
+        unsafe {
+            err = gl::GetError();
+        }
+
         num_frames += 1;
         let now = time::PreciseTime::now();
         if last_log.to(now) > time::Duration::seconds(1) {
@@ -703,12 +712,13 @@ fn main() {
             num_frames = 0;
             last_log = now;
             println!(
-                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}, queries {}",
+                "FPS: {:#?}, Drew {} / {} ({}%) points. total nodes {}, nodes drawm {}, queries {}, glerror {}",
                 fps,
                 samples_passed, num_points_drawn, samples_passed as f32 / num_points_drawn as f32 * 100.,
                 visible_nodes.len(),
                 num_nodes_drawn,
                 num_queries,
+                err,
             );
         }
     };
