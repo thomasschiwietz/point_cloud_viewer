@@ -13,12 +13,14 @@ void main()
     // unknown on MacOS
     //vec4 closest_depths = textureGather(aTex, tex.xy);
 
-    // scale source texture coordinates
+    // separate uniform parameter
     float src_scale = step_scale.z;
-    vec2 src_tex = tex * src_scale;
+    vec2 step = step_scale.xy;
+    
+    // scale source texture coordinates and shift a half texel
+    vec2 src_tex = tex * src_scale - 0.5 * step;
 
     // 4 nearest texels in source texture
-    vec2 step = step_scale.xy;
     vec2 src_tex_00 = src_tex + vec2(0.0, 0.0) * step;
     vec2 src_tex_01 = src_tex + vec2(0.0, 1.0) * step;
     vec2 src_tex_11 = src_tex + vec2(1.0, 1.0) * step;
