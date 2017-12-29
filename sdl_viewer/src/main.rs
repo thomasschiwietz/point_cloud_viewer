@@ -39,6 +39,7 @@ use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlTexture
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
+use std::cmp;
 use std::mem;
 use std::path::PathBuf;
 use std::process;
@@ -460,9 +461,10 @@ fn main() {
     let outlined_box_drawer = OutlinedBoxDrawer::new();
     let zbuffer_drawer = ZBufferDrawer::new();
     let mut reduction = Reduction::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+    let mut max_reduce_steps = 1;
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
-    camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
+    camera.set_pos_rot(&Vector3::new(-40., 8.5, 1.), Deg(90.), Deg(90.));
     let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
     let mut gl_query = GlQuery::new();
@@ -500,6 +502,8 @@ fn main() {
                         Scancode::F => force_load_all = true,
                         Scancode::O => show_octree_nodes = !show_octree_nodes,
                         Scancode::P => show_octree_view = !show_octree_view,
+                        Scancode::Num1 => { max_reduce_steps -= 1; max_reduce_steps = cmp::max(max_reduce_steps, 1); println!("max_reduce_steps {}", max_reduce_steps) },
+                        Scancode::Num2 => { max_reduce_steps += 1; println!("max_reduce_steps {}", max_reduce_steps) },
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
@@ -695,7 +699,7 @@ fn main() {
             if !show_reduced_depth_buffer {
                 zbuffer_drawer.draw(gl_depth_texture.id, 1., 1.);
             } else {
-                let (result_texture_id, dst_width, dst_height) = reduction.reduce_max(gl_depth_texture.id);
+                let (result_texture_id, dst_width, dst_height) = reduction.reduce_max(gl_depth_texture.id, max_reduce_steps);
 
                 zbuffer_drawer.draw(result_texture_id, dst_width as f32 / camera.width as f32, dst_height as f32 / camera.height as f32);
             }

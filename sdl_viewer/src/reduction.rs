@@ -15,6 +15,7 @@
 use gl;
 use graphic::{GlProgram, GlFramebuffer, TextureType};
 use gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
+use std::cmp;
 use std::str;
 use std::mem;
 use std::ptr;
@@ -79,12 +80,16 @@ impl Reduction {
     }
 
     // return texture_id of result
-    pub fn reduce_max(&self, texture_id: GLuint) -> (GLuint, i32, i32) {
+    pub fn reduce_max(&self, depth_texture_id: GLuint, max_steps: i32) -> (GLuint, i32, i32) {
         // texture dimensions of texture_ID and internal frame buffer must match!
         // save current viewport
 
         let orig_width = self.frame_buffers[0].width;
         let orig_height = self.frame_buffers[0].height;
+
+        // step in normalized coordinates to access neighboring texel
+        let tex_step_x = 1. / orig_width as f32;
+        let tex_step_y = 1. / orig_height as f32;
 
         let mut dst_width = orig_width / 2;
         let mut dst_height = orig_height / 2;
@@ -102,9 +107,9 @@ impl Reduction {
             gl::ActiveTexture(gl::TEXTURE0 + 0);
         }
 
-        for i in 0..100 {       // arbitrary high limit
-            let step_scale = vec![1. / orig_width as f32, 1. / orig_height as f32, src_texture_scale, 0.];
+        let steps = cmp::max(max_steps, 1);
 
+        for i in 0..steps {       // arbitrary limit
             // setup target frame buffer
             self.frame_buffers[dst_framebuffer].bind();
             unsafe {
@@ -112,18 +117,19 @@ impl Reduction {
                 gl::Scissor(0, 0, dst_width, dst_height);
 
                 // clear is not necessary
-                //gl::ClearColor(1., 1., 1., 1.);
-                //gl::Clear(gl::COLOR_BUFFER_BIT);
 
                 // set step and scaling uniform
-                gl::Uniform4fv(self.u_max_step_scale, 1, step_scale.as_ptr());
+                gl::Uniform4f(self.u_max_step_scale, dst_width as f32 * 2., dst_height as f32 * 2., tex_step_x, tex_step_y);
 
-                // source from external texture the first time
+                // first time use provided depth texture, otherwise source frame buffer color texture
+                let texture_id;
                 if i == 0 {
-                    gl::BindTexture(gl::TEXTURE_2D, texture_id);
-                } else {
-                    gl::BindTexture(gl::TEXTURE_2D, self.frame_buffers[src_framebuffer].color_texture.id);                    
+                    texture_id = depth_texture_id;
                 }
+                else {
+                    texture_id = self.frame_buffers[src_framebuffer].color_texture.id;                    
+                }
+                gl::BindTexture(gl::TEXTURE_2D, texture_id);                    
 
                 self.quad_buffer.draw();
             }
