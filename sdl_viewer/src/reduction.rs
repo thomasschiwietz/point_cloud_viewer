@@ -20,7 +20,7 @@ use std::mem;
 use std::ptr;
 use quad_buffer::QuadBuffer;
 
-const FRAGMENT_SHADER_REDUCTION: &'static str = include_str!("../shaders/reduction.fs");
+const FRAGMENT_SHADER_REDUCE_MAX: &'static str = include_str!("../shaders/reduce_max.fs");
 const VERTEX_SHADER_REDUCTION: &'static str = include_str!("../shaders/quad_drawer.vs");
 
 pub struct Reduction
@@ -29,8 +29,8 @@ pub struct Reduction
 
     frame_buffers: [GlFramebuffer; 2],
 
-    program: GlProgram,
-    u_texture_id: GLint,
+    program_max: GlProgram,
+    u_max_texture_id: GLint,
 }
 
 impl Reduction {
@@ -38,16 +38,16 @@ impl Reduction {
         let quad_buffer = QuadBuffer::new();
         let frame_buffers = [GlFramebuffer::new(width, height, false), GlFramebuffer::new(width, height, false)];
 
-        let program = GlProgram::new(VERTEX_SHADER_REDUCTION, FRAGMENT_SHADER_REDUCTION);  
-        let u_texture_id;
+        let program_max = GlProgram::new(VERTEX_SHADER_REDUCTION, FRAGMENT_SHADER_REDUCE_MAX);  
+        let u_max_texture_id;
         unsafe {
-            gl::UseProgram(program.id);
-            u_texture_id = gl::GetUniformLocation(program.id, c_str!("aTex"));
+            gl::UseProgram(program_max.id);
+            u_max_texture_id = gl::GetUniformLocation(program_max.id, c_str!("aTex"));
         }
 
         quad_buffer.vertex_array.bind();
         unsafe{
-            let pos_attr = gl::GetAttribLocation(program.id, c_str!("aPos"));
+            let pos_attr = gl::GetAttribLocation(program_max.id, c_str!("aPos"));
             gl::EnableVertexAttribArray(pos_attr as GLuint);
             gl::VertexAttribPointer(
                 pos_attr as GLuint,
@@ -61,8 +61,8 @@ impl Reduction {
         Reduction {
             quad_buffer,
             frame_buffers,
-            program,
-            u_texture_id,
+            program_max,
+            u_max_texture_id,
         }        
     }
 
@@ -83,10 +83,10 @@ impl Reduction {
         // }
 
         unsafe {
-            gl::UseProgram(self.program.id);
+            gl::UseProgram(self.program_max.id);
 
             // bind texture to texture unit 0
-            gl::Uniform1i(self.u_texture_id, 0);
+            gl::Uniform1i(self.u_max_texture_id, 0);
             gl::ActiveTexture(gl::TEXTURE0 + 0);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
 
