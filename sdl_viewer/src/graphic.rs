@@ -288,6 +288,8 @@ impl GlFramebuffer {
             self.depth_texture.set_size(width, height);
         }
         GlFramebuffer::attach(self.frame_buffer_id, self.color_texture.id, self.depth_texture.id);
+        self.width = width;
+        self.height = height;
     }
 
     pub fn bind(&self) {
