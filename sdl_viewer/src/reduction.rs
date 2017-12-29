@@ -71,14 +71,22 @@ impl Reduction {
         self.frame_buffers[1].set_size(width, height);
     }
 
-    pub fn reduce_max(&self, texture_id: GLuint) {
+    // return texture_id of result
+    pub fn reduce_max(&self, texture_id: GLuint) -> GLuint {
         // texture dimensions of texture_ID and internal frame buffer must match!
+        // save current viewport
+
+        self.frame_buffers[0].bind();
+        // unsafe {
+        //     gl::ClearColor(0.0, 0.0, 0.0, 0.0);
+        //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        // }
+
         unsafe {
             gl::UseProgram(self.program.id);
-            //gl::Disable(gl::DEPTH);           // causes opengl error?
 
-            // bind texture
-            gl::Uniform1i(self.u_texture_id, 0);       // assign texture unit 0
+            // bind texture to texture unit 0
+            gl::Uniform1i(self.u_texture_id, 0);
             gl::ActiveTexture(gl::TEXTURE0 + 0);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
 
@@ -86,5 +94,11 @@ impl Reduction {
 
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
+
+        self.frame_buffers[0].unbind();
+
+        // reset viewport
+
+        self.frame_buffers[0].color_texture.id
     }
 }

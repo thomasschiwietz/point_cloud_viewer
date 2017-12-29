@@ -35,7 +35,7 @@ use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
 use sdl_viewer::zbuffer_drawer::ZBufferDrawer;
 use sdl_viewer::reduction::Reduction;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
-use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlFramebuffer, GlTexture};
+use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlTexture};
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
@@ -470,8 +470,6 @@ fn main() {
     let mut enable_occ_query = false;
     let mut batch_size = 10;
 
-    let mut gl_framebuffer = GlFramebuffer::new(camera.width, camera.height, false);
-
     let mut show_depth_buffer = false;
     let mut show_reduced_depth_buffer = false;
     let mut gl_depth_texture = GlTexture::new_depth(camera.width, camera.height);
@@ -537,7 +535,6 @@ fn main() {
                 Event::Window { win_event: WindowEvent::SizeChanged(w, h), .. } => {
                     camera.set_size(w, h);
                     camera_octree.set_size(w / 2, h / 2);
-                    gl_framebuffer.set_size(w ,h);
                     gl_depth_texture.set_size(w, h);
                     reduction.set_size(w, h);
                 }
@@ -569,13 +566,6 @@ fn main() {
 
         let mut current_batch = 0;
         let mut num_queries = 0;
-
-        // unsafe {
-        //     gl::Viewport(0, 0, camera.width, camera.height);
-        //     gl::ClearColor(0., 0., 0., 1.);
-        //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        // }
-        // gl_framebuffer.bind();
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -705,20 +695,13 @@ fn main() {
             if !show_reduced_depth_buffer {
                 zbuffer_drawer.draw(gl_depth_texture.id);
             } else {
-                gl_framebuffer.set_size(camera.width / 8, camera.height / 8);
-                gl_framebuffer.bind();
-                // unsafe {
-                //     gl::ClearColor(0., 0., 0., 1.);
-                //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-                // }
-                reduction.reduce_max(gl_depth_texture.id);
-                
-                gl_framebuffer.unbind();
+                let result_texture_id = reduction.reduce_max(gl_depth_texture.id);
 
                 unsafe {
-                    gl::Clear(gl::DEPTH_BUFFER_BIT);
+                    gl::Viewport(0, 0, camera.width, camera.height);
                 }
-                zbuffer_drawer.draw(gl_framebuffer.color_texture.id);
+
+                zbuffer_drawer.draw(result_texture_id);
             }
 
             unsafe {
