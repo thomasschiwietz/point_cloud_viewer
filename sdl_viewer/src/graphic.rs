@@ -167,6 +167,7 @@ impl Drop for GlQuery {
 }
 
 enum TextureType {
+    Uninitialized,
     Color,
     Depth,
 }
@@ -189,6 +190,13 @@ impl GlTexture {
 
         let texture_type = TextureType::Depth;
         let id = GlTexture::create_texture(width, height, &texture_type);
+
+        GlTexture { id, texture_type }
+    }
+
+    pub fn new_uninitialized() -> Self {
+        let texture_type = TextureType::Uninitialized;
+        let id = 0;
 
         GlTexture { id, texture_type }
     }
@@ -222,7 +230,8 @@ impl GlTexture {
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_FUNC, gl::LEQUAL as i32);
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_COMPARE_MODE, gl::NONE as i32);
-                }
+                },
+                TextureType::Uninitialized => {},
             };
 
             gl::BindTexture(gl::TEXTURE_2D, 0);            
@@ -248,14 +257,19 @@ pub struct GlFramebuffer {
 }
 
 impl GlFramebuffer {
-    pub fn new(width: i32, height: i32) -> Self {
+    pub fn new(width: i32, height: i32, create_depth_buffer: bool) -> Self {
         let mut frame_buffer_id = 0;
-        let mut color_texture = GlTexture::new_color(width, height);
-        let mut depth_texture = GlTexture::new_depth(width, height);
-
         unsafe {
-            // create frame buffer
             gl::GenFramebuffers(1, &mut frame_buffer_id);
+        }
+
+        let mut color_texture = GlTexture::new_color(width, height);
+        let mut depth_texture;
+        if create_depth_buffer {
+            depth_texture = GlTexture::new_depth(width, height);
+        }
+        else {
+            depth_texture = GlTexture::new_uninitialized();            
         }
 
         GlFramebuffer::attach(frame_buffer_id, color_texture.id, depth_texture.id);
@@ -267,8 +281,10 @@ impl GlFramebuffer {
          unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, frame_buffer_id);
 
-            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, color_texture_id, 0);            
-            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, depth_texture_id, 0);            
+            gl::FramebufferTexture(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, color_texture_id, 0);
+            if depth_texture_id != 0 {
+                gl::FramebufferTexture(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, depth_texture_id, 0);
+            }
 
             // error checks
             if (gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE) {
@@ -282,7 +298,9 @@ impl GlFramebuffer {
     pub fn set_size(&mut self, width: i32, height: i32) {
         self.unbind();
         self.color_texture.set_size(width, height);
-        self.depth_texture.set_size(width, height);
+        if self.depth_texture.id != 0 {
+            self.depth_texture.set_size(width, height);
+        }
         GlFramebuffer::attach(self.frame_buffer_id, self.color_texture.id, self.depth_texture.id);
     }
 
@@ -291,8 +309,8 @@ impl GlFramebuffer {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.frame_buffer_id);
             gl::Viewport(0, 0, self.width, self.height);
 
-            let mut draw_buffers: [GLenum; 1] = [gl::COLOR_ATTACHMENT0];
-            gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]);
+            //let mut draw_buffers: [GLenum; 1] = [gl::COLOR_ATTACHMENT0];
+            //gl::DrawBuffers(draw_buffers.len() as i32, &draw_buffers[0]);
         }
     }
 
@@ -300,7 +318,7 @@ impl GlFramebuffer {
         unsafe {
             // reset original viewport!
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-            gl::DrawBuffer(gl::BACK);
+            //gl::DrawBuffer(gl::BACK);
         }
     }
 }

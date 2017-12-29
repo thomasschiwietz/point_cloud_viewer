@@ -36,7 +36,7 @@ pub struct Reduction
 impl Reduction {
     pub fn new(width: i32, height: i32) -> Self {
         let quad_buffer = QuadBuffer::new();
-        let frame_buffers = [GlFramebuffer::new(width, height), GlFramebuffer::new(width, height)];
+        let frame_buffers = [GlFramebuffer::new(width, height, false), GlFramebuffer::new(width, height, false)];
 
         let program = GlProgram::new(VERTEX_SHADER_REDUCTION, FRAGMENT_SHADER_REDUCTION);  
         let u_texture_id;

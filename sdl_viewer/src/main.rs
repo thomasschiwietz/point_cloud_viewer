@@ -470,7 +470,7 @@ fn main() {
     let mut enable_occ_query = false;
     let mut batch_size = 10;
 
-    let mut gl_framebuffer = GlFramebuffer::new(camera.width, camera.height);
+    let mut gl_framebuffer = GlFramebuffer::new(camera.width, camera.height, false);
 
     let mut show_depth_buffer = false;
     let mut show_reduced_depth_buffer = false;
@@ -707,10 +707,10 @@ fn main() {
             } else {
                 gl_framebuffer.set_size(camera.width / 8, camera.height / 8);
                 gl_framebuffer.bind();
-                unsafe {
-                    gl::ClearColor(0., 0., 0., 1.);
-                    gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-                }
+                // unsafe {
+                //     gl::ClearColor(0., 0., 0., 1.);
+                //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+                // }
                 reduction.reduce_max(gl_depth_texture.id);
                 
                 gl_framebuffer.unbind();
