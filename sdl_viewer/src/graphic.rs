@@ -166,9 +166,10 @@ impl Drop for GlQuery {
     }
 }
 
-enum TextureType {
+pub enum TextureType {
     Uninitialized,
-    Color,
+    ColorRGB8,
+    ColorR32F,
     Depth,
 }
 
@@ -178,30 +179,14 @@ pub struct GlTexture {
 }
 
 impl GlTexture {
-    pub fn new_color(width: i32, height: i32) -> Self {
-
-        let texture_type = TextureType::Color;
+    pub fn new(width: i32, height: i32, texture_type: TextureType) -> Self {
         let id = GlTexture::create_texture(width, height, &texture_type);
-
-        GlTexture { id, texture_type }
-    }
-
-    pub fn new_depth(width: i32, height: i32) -> Self {
-
-        let texture_type = TextureType::Depth;
-        let id = GlTexture::create_texture(width, height, &texture_type);
-
-        GlTexture { id, texture_type }
-    }
-
-    pub fn new_uninitialized() -> Self {
-        let texture_type = TextureType::Uninitialized;
-        let id = 0;
 
         GlTexture { id, texture_type }
     }
 
     pub fn set_size(&mut self, width: i32, height: i32) {
+        // check size and return if unchanged
         unsafe {
             gl::DeleteTextures(1, &self.id);
         }
@@ -212,17 +197,24 @@ impl GlTexture {
     fn create_texture(width: i32, height: i32, texture_type: &TextureType) -> GLuint {
         let mut id = 0;
         unsafe {
-            // creste depth texture
-            gl::GenTextures(1, &mut id);
-            gl::BindTexture(gl::TEXTURE_2D, id);
-
             match *texture_type {
-                TextureType::Color => {
+                TextureType::ColorRGB8 => {
+                    gl::GenTextures(1, &mut id);
+                    gl::BindTexture(gl::TEXTURE_2D, id);
                     gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32, width, height, 0, gl::RGB, gl::UNSIGNED_BYTE, ptr::null());
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
                 },
+                TextureType::ColorR32F => {
+                    gl::GenTextures(1, &mut id);
+                    gl::BindTexture(gl::TEXTURE_2D, id);
+                    gl::TexImage2D(gl::TEXTURE_2D, 0, gl::R32F as i32, width, height, 0, gl::RED, gl::FLOAT, ptr::null());
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+                    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+                },
                 TextureType::Depth => {
+                    gl::GenTextures(1, &mut id);
+                    gl::BindTexture(gl::TEXTURE_2D, id);
                     gl::TexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT32 as i32, width, height, 0, gl::DEPTH_COMPONENT, gl::FLOAT, ptr::null());
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
@@ -257,20 +249,16 @@ pub struct GlFramebuffer {
 }
 
 impl GlFramebuffer {
-    pub fn new(width: i32, height: i32, create_depth_buffer: bool) -> Self {
+    pub fn new(width: i32, height: i32, color_type: TextureType, depth_type: TextureType) -> Self {
         let mut frame_buffer_id = 0;
         unsafe {
             gl::GenFramebuffers(1, &mut frame_buffer_id);
         }
 
-        let mut color_texture = GlTexture::new_color(width, height);
-        let mut depth_texture;
-        if create_depth_buffer {
-            depth_texture = GlTexture::new_depth(width, height);
-        }
-        else {
-            depth_texture = GlTexture::new_uninitialized();            
-        }
+        let color_texture = GlTexture::new(width, height, color_type);
+        let depth_texture = GlTexture::new(width, height, depth_type);
+
+        println!("color {}, depth {}", color_texture.id, depth_texture.id);
 
         GlFramebuffer::attach(frame_buffer_id, color_texture.id, depth_texture.id);
 

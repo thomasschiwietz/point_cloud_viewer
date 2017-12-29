@@ -35,7 +35,7 @@ use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
 use sdl_viewer::zbuffer_drawer::ZBufferDrawer;
 use sdl_viewer::reduction::Reduction;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
-use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlTexture};
+use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlTexture, TextureType};
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
@@ -472,7 +472,7 @@ fn main() {
 
     let mut show_depth_buffer = false;
     let mut show_reduced_depth_buffer = false;
-    let mut gl_depth_texture = GlTexture::new_depth(camera.width, camera.height);
+    let mut gl_depth_texture = GlTexture::new(camera.width, camera.height, TextureType::Depth);
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;

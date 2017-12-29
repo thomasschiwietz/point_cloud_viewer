@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use gl;
-use graphic::{GlProgram, GlFramebuffer};
+use graphic::{GlProgram, GlFramebuffer, TextureType};
 use gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
 use std::str;
 use std::mem;
@@ -36,7 +36,10 @@ pub struct Reduction
 impl Reduction {
     pub fn new(width: i32, height: i32) -> Self {
         let quad_buffer = QuadBuffer::new();
-        let frame_buffers = [GlFramebuffer::new(width, height, false), GlFramebuffer::new(width, height, false)];
+        let frame_buffers = [
+            GlFramebuffer::new(width, height, TextureType::ColorR32F, TextureType::Uninitialized), 
+            GlFramebuffer::new(width, height, TextureType::ColorR32F, TextureType::Uninitialized),
+        ];
 
         let program_max = GlProgram::new(VERTEX_SHADER_REDUCTION, FRAGMENT_SHADER_REDUCE_MAX);  
         let u_max_texture_id;
@@ -77,10 +80,10 @@ impl Reduction {
         // save current viewport
 
         self.frame_buffers[0].bind();
-        // unsafe {
-        //     gl::ClearColor(0.0, 0.0, 0.0, 0.0);
-        //     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        // }
+        unsafe {
+            gl::ClearColor(0.0, 0.0, 0.0, 0.0);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+        }
 
         unsafe {
             gl::UseProgram(self.program_max.id);
