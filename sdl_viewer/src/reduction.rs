@@ -38,9 +38,13 @@ pub struct Reduction
 impl Reduction {
     pub fn new(width: i32, height: i32) -> Self {
         let quad_buffer = QuadBuffer::new();
+
+        let width2 = (width as usize).next_power_of_two() / 2;
+        let height2 = (height as usize).next_power_of_two() / 2;
+
         let frame_buffers = [
-            GlFramebuffer::new(width, height, TextureType::ColorR32F, TextureType::Uninitialized), 
-            GlFramebuffer::new(width, height, TextureType::ColorR32F, TextureType::Uninitialized),
+            GlFramebuffer::new(width2 as i32, height2 as i32, TextureType::ColorR32F, TextureType::Uninitialized), 
+            GlFramebuffer::new(width2 as i32, height2 as i32, TextureType::ColorR32F, TextureType::Uninitialized),
         ];
 
         let program_max = GlProgram::new(VERTEX_SHADER_REDUCTION, FRAGMENT_SHADER_REDUCE_MAX);  
@@ -75,31 +79,33 @@ impl Reduction {
     }
 
     pub fn set_size(&mut self, width: i32, height: i32) {
-        self.frame_buffers[0].set_size(width, height);
-        self.frame_buffers[1].set_size(width, height);
+        let width2 = (width as usize).next_power_of_two() / 2;
+        let height2 = (height as usize).next_power_of_two() / 2;
+
+        self.frame_buffers[0].set_size(width2 as i32, height2 as i32);
+        self.frame_buffers[1].set_size(width2 as i32, height2 as i32);
     }
 
     // return texture_id of result
-    pub fn reduce_max(&self, depth_texture_id: GLuint, max_steps: i32) -> (GLuint, i32, i32) {
+    pub fn reduce_max(&self, depth_texture_id: GLuint, tex_width: i32, tex_height: i32, max_steps: i32) -> (GLuint, f32) {
         // texture dimensions of texture_ID and internal frame buffer must match!
         // save current viewport
 
-        let orig_width = self.frame_buffers[0].width;
-        let orig_height = self.frame_buffers[0].height;
+        let fb_width = self.frame_buffers[0].width;
+        let fb_height = self.frame_buffers[0].height;
 
         // step in normalized coordinates to access neighboring texel
-        let tex_step_x = 1. / orig_width as f32;
-        let tex_step_y = 1. / orig_height as f32;
+        let fb_step_x = 1. / fb_width as f32;
+        let fb_step_y = 1. / fb_height as f32;
 
-        let mut dst_width = orig_width / 2;
-        let mut dst_height = orig_height / 2;
+        let mut dst_width = fb_width;       // fb_width and height are already the next smaller power of two
+        let mut dst_height = fb_height;
         let mut src_texture_scale = 1.;
 
         let mut src_framebuffer = 1;
         let mut dst_framebuffer = 0;
 
         unsafe {
-            gl::Enable(gl::SCISSOR_TEST);
             gl::UseProgram(self.program_max.id);
 
             // bind texture to texture unit 0
@@ -109,19 +115,20 @@ impl Reduction {
 
         let steps = cmp::max(max_steps, 1);
 
+        // set source to input texture dimensions
+        let mut src_width = tex_width as f32;
+        let mut src_height = tex_height as f32;
+        let mut src_step_x = 1. / src_width;
+        let mut src_step_y = 1. / src_height;
+
         for i in 0..steps {       // arbitrary limit
             // setup target frame buffer
             self.frame_buffers[dst_framebuffer].bind();
             unsafe {
                 gl::Viewport(0, 0, dst_width, dst_height);
-                gl::Scissor(0, 0, dst_width, dst_height);
-
-                println!("{}: size {}, {}", i, dst_width, dst_height);
-
-                // clear is not necessary
 
                 // set step and scaling uniform
-                gl::Uniform4f(self.u_max_size_step, dst_width as f32 * 2., dst_height as f32 * 2., tex_step_x, tex_step_y);
+                gl::Uniform4f(self.u_max_size_step, src_width, src_height, src_step_x, src_step_y);
 
                 // first time use provided depth texture, otherwise source frame buffer color texture
                 let texture_id;
@@ -142,7 +149,13 @@ impl Reduction {
             src_framebuffer = 1 - src_framebuffer;
             dst_framebuffer = 1 - dst_framebuffer;
 
-            // next destination size
+            // update source dimensions from framebuffer
+            src_width = dst_width as f32;
+            src_height = dst_height as f32;
+            src_step_x = fb_step_x;
+            src_step_y = fb_step_y;
+
+            // next destination size. It would be nicer to move this to the top of the loop so that the values are still corrected once the loop is broken
             dst_width /= 2;
             dst_height /= 2;
             src_texture_scale /= 2.;
@@ -155,11 +168,9 @@ impl Reduction {
 
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, 0);
-            gl::Disable(gl::SCISSOR_TEST);
-            gl::Scissor(0, 0, orig_width, orig_height);
-            gl::Viewport(0, 0, orig_width, orig_height);
+            gl::Viewport(0, 0, tex_width, tex_height);
         }
 
-        (self.frame_buffers[src_framebuffer].color_texture.id, dst_width * 2, dst_height * 2)
+        (self.frame_buffers[src_framebuffer].color_texture.id, src_texture_scale * 2.)
     }
 }

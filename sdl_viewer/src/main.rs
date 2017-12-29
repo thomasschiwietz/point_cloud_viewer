@@ -428,8 +428,8 @@ fn main() {
     gl_attr.set_context_profile(GLProfile::Core);
     gl_attr.set_context_version(3, 2);
 
-    const WINDOW_WIDTH: i32 = 1024;
-    const WINDOW_HEIGHT: i32 = 512;
+    const WINDOW_WIDTH: i32 = 800;
+    const WINDOW_HEIGHT: i32 = 600;
     let window = match video_subsystem
               .window("sdl2_viewer", WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
               .position_centered()
@@ -699,9 +699,9 @@ fn main() {
             if !show_reduced_depth_buffer {
                 zbuffer_drawer.draw(gl_depth_texture.id, 1., 1.);
             } else {
-                let (result_texture_id, dst_width, dst_height) = reduction.reduce_max(gl_depth_texture.id, max_reduce_steps);
+                let (result_texture_id, result_tex_scale) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, max_reduce_steps);
 
-                zbuffer_drawer.draw(result_texture_id, dst_width as f32 / camera.width as f32, dst_height as f32 / camera.height as f32);
+                zbuffer_drawer.draw(result_texture_id, result_tex_scale, result_tex_scale);
             }
 
             unsafe {
