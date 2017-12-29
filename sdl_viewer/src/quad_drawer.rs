@@ -14,30 +14,29 @@
 
 use gl;
 use glhelper::{compile_shader, link_program};
-use graphic::{GlBuffer, GlProgram, GlVertexArray};
+use graphic::GlProgram;
 use gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
 use std::str;
 use std::mem;
 use std::ptr;
 use cgmath::{Array, Matrix, Matrix4};
+use quad_buffer::QuadBuffer;
 
 const FRAGMENT_SHADER_QUAD: &'static str = include_str!("../shaders/quad_drawer.fs");
 const VERTEX_SHADER_QUAD: &'static str = include_str!("../shaders/quad_drawer.vs");
 
 pub struct QuadDrawer
 {
+    quad_buffer: QuadBuffer,
+
     program: GlProgram,
-
     u_texture_id: GLint,
-
-    // vertex array and buffers
-    vertex_array: GlVertexArray,
-    _buffer_position: GlBuffer,
-    _buffer_indices: GlBuffer,
 }
 
 impl QuadDrawer {
     pub fn new() -> Self {
+        let quad_buffer = QuadBuffer::new();
+
         let program = GlProgram::new(VERTEX_SHADER_QUAD, FRAGMENT_SHADER_QUAD);  
         let u_texture_id;
         unsafe {
@@ -45,43 +44,7 @@ impl QuadDrawer {
             u_texture_id = gl::GetUniformLocation(program.id, c_str!("aTex"));
         }
 
-        let vertex_array = GlVertexArray::new();
-        vertex_array.bind();
-
-        // vertex buffer: define 4 vertices of the quad
-        let _buffer_position = GlBuffer::new();
-        _buffer_position.bind(gl::ARRAY_BUFFER);
-        let vertices: [[f32;3]; 4] = [
-            [-1.0, -1.0, 0.0],
-            [ 1.0, -1.0, 0.0],
-            [ 1.0,  1.0, 0.0],
-            [-1.0,  1.0, 0.0],
-        ];
-        unsafe {
-            gl::BufferData(
-                gl::ARRAY_BUFFER,
-                (vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
-                mem::transmute(&vertices[0]),
-                gl::STATIC_DRAW,
-            );
-        }
-
-        // define index buffer for 24 edges of the box
-        let _buffer_indices = GlBuffer::new();
-        _buffer_indices.bind(gl::ELEMENT_ARRAY_BUFFER);
-        let indices: [i32; 2*3] = [
-            0,1,2,
-            0,2,3,
-        ];
-        unsafe {
-            gl::BufferData(
-                gl::ELEMENT_ARRAY_BUFFER,
-                (indices.len() * mem::size_of::<i32>()) as GLsizeiptr,
-                mem::transmute(&indices[0]),
-                gl::STATIC_DRAW,
-            );
-        }
-
+        quad_buffer.vertex_array.bind();
         unsafe{
             let pos_attr = gl::GetAttribLocation(program.id, c_str!("aPos"));
             gl::EnableVertexAttribArray(pos_attr as GLuint);
@@ -94,31 +57,28 @@ impl QuadDrawer {
                 ptr::null(),
             );
         }
+
         QuadDrawer {
+            quad_buffer,
             program,
             u_texture_id,
-            vertex_array,
-            _buffer_position,
-            _buffer_indices
         }        
     }
 
     pub fn draw(&self, texture_id: GLuint) {
-        self.vertex_array.bind();
 
         unsafe {
             gl::UseProgram(self.program.id);
             //gl::Disable(gl::DEPTH);           // causes opengl error?
 
-            // bind texture
-            gl::Uniform1i(self.u_texture_id, 0);       // assign texture unit 0
+            // bind texture to unit 0
+            gl::Uniform1i(self.u_texture_id, 0);
             gl::ActiveTexture(gl::TEXTURE0 + 0);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
 
-            gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
+            self.quad_buffer.draw();
 
             gl::BindTexture(gl::TEXTURE_2D, 0);
-
         }
     }
 }
