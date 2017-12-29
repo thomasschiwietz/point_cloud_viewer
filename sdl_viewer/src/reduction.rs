@@ -79,10 +79,20 @@ impl Reduction {
         // texture dimensions of texture_ID and internal frame buffer must match!
         // save current viewport
 
+        let orig_width = self.frame_buffers[0].width;
+        let orig_height = self.frame_buffers[0].height;
+
+        let dst_width = orig_width / 2;
+        let dst_height = orig_height / 2;
+
         self.frame_buffers[0].bind();
         unsafe {
             gl::ClearColor(0.0, 0.0, 0.0, 0.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
+
+            gl::Viewport(0, 0, dst_width, dst_height);
+            gl::Scissor(0, 0, dst_width, dst_height);
+            gl::Enable(gl::SCISSOR_TEST);
         }
 
         unsafe {
@@ -100,7 +110,11 @@ impl Reduction {
 
         self.frame_buffers[0].unbind();
 
-        // reset viewport
+        unsafe {
+            gl::Disable(gl::SCISSOR_TEST);
+            gl::Scissor(0, 0, orig_width, orig_height);
+            gl::Viewport(0, 0, orig_width, orig_height);
+        }
 
         self.frame_buffers[0].color_texture.id
     }
