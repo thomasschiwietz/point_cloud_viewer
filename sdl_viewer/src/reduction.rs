@@ -99,7 +99,7 @@ impl Reduction {
             gl::Enable(gl::SCISSOR_TEST);
         }
 
-        let max_step = vec![1. / orig_width as f32, 1. / orig_height as f32, 0., 0.];
+        let max_step = vec![1. / orig_width as f32, 1. / orig_height as f32, 1., 0.];
 
         unsafe {
             gl::UseProgram(self.program_max.id);
