@@ -31,6 +31,7 @@ pub struct Reduction
 
     program_max: GlProgram,
     u_max_texture_id: GLint,
+    u_max_step: GLint,
 }
 
 impl Reduction {
@@ -43,9 +44,11 @@ impl Reduction {
 
         let program_max = GlProgram::new(VERTEX_SHADER_REDUCTION, FRAGMENT_SHADER_REDUCE_MAX);  
         let u_max_texture_id;
+        let u_max_step;
         unsafe {
             gl::UseProgram(program_max.id);
             u_max_texture_id = gl::GetUniformLocation(program_max.id, c_str!("aTex"));
+            u_max_step = gl::GetUniformLocation(program_max.id, c_str!("step"));
         }
 
         quad_buffer.vertex_array.bind();
@@ -66,6 +69,7 @@ impl Reduction {
             frame_buffers,
             program_max,
             u_max_texture_id,
+            u_max_step,
         }        
     }
 
@@ -87,7 +91,7 @@ impl Reduction {
 
         self.frame_buffers[0].bind();
         unsafe {
-            gl::ClearColor(0.0, 0.0, 0.0, 0.0);
+            gl::ClearColor(1., 1., 1., 1.);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
             gl::Viewport(0, 0, dst_width, dst_height);
@@ -95,8 +99,12 @@ impl Reduction {
             gl::Enable(gl::SCISSOR_TEST);
         }
 
+        let max_step = vec![1. / orig_width as f32, 1. / orig_height as f32, 0., 0.];
+
         unsafe {
             gl::UseProgram(self.program_max.id);
+            gl::Uniform4fv(self.u_max_step, 1, max_step.as_ptr());
+
 
             // bind texture to texture unit 0
             gl::Uniform1i(self.u_max_texture_id, 0);

@@ -258,8 +258,6 @@ impl GlFramebuffer {
         let color_texture = GlTexture::new(width, height, color_type);
         let depth_texture = GlTexture::new(width, height, depth_type);
 
-        println!("color {}, depth {}", color_texture.id, depth_texture.id);
-
         GlFramebuffer::attach(frame_buffer_id, color_texture.id, depth_texture.id);
 
         GlFramebuffer { frame_buffer_id, color_texture, depth_texture, width, height }
