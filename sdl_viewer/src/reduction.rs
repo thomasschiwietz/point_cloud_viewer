@@ -93,27 +93,30 @@ impl Reduction {
         let mut src_framebuffer = 1;
         let mut dst_framebuffer = 0;
 
-        for i in 0..1 {
+        unsafe {
+            gl::Enable(gl::SCISSOR_TEST);
+            gl::UseProgram(self.program_max.id);
+
+            // bind texture to texture unit 0
+            gl::Uniform1i(self.u_max_texture_id, 0);
+            gl::ActiveTexture(gl::TEXTURE0 + 0);
+        }
+
+        for i in 0..4 {
+            let step = vec![1. / orig_width as f32, 1. / orig_height as f32, src_texture_scale, 0.];
+
             // setup target frame buffer
             self.frame_buffers[dst_framebuffer].bind();
             unsafe {
-                gl::ClearColor(1., 1., 1., 1.);
-                gl::Clear(gl::COLOR_BUFFER_BIT);
-
                 gl::Viewport(0, 0, dst_width, dst_height);
                 gl::Scissor(0, 0, dst_width, dst_height);
-                gl::Enable(gl::SCISSOR_TEST);
-            }
 
-            let max_step = vec![1. / orig_width as f32, 1. / orig_height as f32, src_texture_scale, 0.];
+                // clear is not necessary
+                //gl::ClearColor(1., 1., 1., 1.);
+                //gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            unsafe {
-                gl::UseProgram(self.program_max.id);
-                gl::Uniform4fv(self.u_max_step, 1, max_step.as_ptr());
-
-                // bind texture to texture unit 0
-                gl::Uniform1i(self.u_max_texture_id, 0);
-                gl::ActiveTexture(gl::TEXTURE0 + 0);
+                // set step and scaling uniform
+                gl::Uniform4fv(self.u_max_step, 1, step.as_ptr());
 
                 // source from external texture the first time
                 if i == 0 {
@@ -123,8 +126,6 @@ impl Reduction {
                 }
 
                 self.quad_buffer.draw();
-
-                gl::BindTexture(gl::TEXTURE_2D, 0);
             }
 
             self.frame_buffers[dst_framebuffer].unbind();
@@ -140,11 +141,14 @@ impl Reduction {
         }
 
         unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, 0);
             gl::Disable(gl::SCISSOR_TEST);
             gl::Scissor(0, 0, orig_width, orig_height);
             gl::Viewport(0, 0, orig_width, orig_height);
         }
 
-        self.frame_buffers[0].color_texture.id
+        //println!("dst size {} x {}", dst_width * 2, dst_height * 2);
+
+        self.frame_buffers[src_framebuffer].color_texture.id
     }
 }
