@@ -36,16 +36,16 @@ impl QuadBuffer {
         // vertex buffer: define 4 vertices of the quad
         let _buffer_position = GlBuffer::new();
         _buffer_position.bind(gl::ARRAY_BUFFER);
-        let vertices: [[f32;3]; 4] = [
-            [-1.0, -1.0, 0.0],
-            [ 1.0, -1.0, 0.0],
-            [ 1.0,  1.0, 0.0],
-            [-1.0,  1.0, 0.0],
+        let vertices: [[f32;2]; 4] = [
+            [-1.0, -1.0],
+            [ 1.0, -1.0],
+            [ 1.0,  1.0],
+            [-1.0,  1.0],
         ];
         unsafe {
             gl::BufferData(
                 gl::ARRAY_BUFFER,
-                (vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
+                (vertices.len() * 2 * mem::size_of::<f32>()) as GLsizeiptr,
                 mem::transmute(&vertices[0]),
                 gl::STATIC_DRAW,
             );

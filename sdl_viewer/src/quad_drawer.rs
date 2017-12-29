@@ -50,10 +50,10 @@ impl QuadDrawer {
             gl::EnableVertexAttribArray(pos_attr as GLuint);
             gl::VertexAttribPointer(
                 pos_attr as GLuint,
-                3,
+                2,
                 gl::FLOAT,
                 gl::FALSE,
-                3 * mem::size_of::<f32>() as i32,
+                2 * mem::size_of::<f32>() as i32,
                 ptr::null(),
             );
         }
