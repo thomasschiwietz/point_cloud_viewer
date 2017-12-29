@@ -3,7 +3,7 @@
 // inputs
 in vec2 tex;
 uniform sampler2D aTex;
-uniform vec4 step_scale;    // x,y: step size in x/y direction; z: source texture scale; w: unused
+uniform vec4 size_step;
 
 // outputs
 layout(location = 0) out vec4 FragColor;
@@ -14,25 +14,17 @@ void main()
     //vec4 closest_depths = textureGather(aTex, tex.xy);
 
     // separate uniform parameter
-    vec2 src_size = step_scale.xy;
-    vec2 tex_step = step_scale.zw;
+    vec2 src_size = size_step.xy;
+    vec2 tex_step = size_step.zw;
     
     // integer texture coordinates into the source texture
-    vec2 src_tex = tex * src_size;
+    vec2 src_tex = tex * src_size - vec2(0.5, 0.5);
 
     // 4 nearest texels in source texture
-    //vec2 src_tex_c = (src_tex + vec2(0.0, 0.0)) * tex_step;
-    //vec2 src_tex_00 = (src_tex + vec2(-1.0, -1.0)) * tex_step;
-    //vec2 src_tex_01 = (src_tex + vec2(-1.0, 1.0)) * tex_step;
-    //vec2 src_tex_11 = (src_tex + vec2(1.0, 1.0)) * tex_step;
-    //vec2 src_tex_10 = (src_tex + vec2(1.0, -1.0)) * tex_step;
-
-    // 4 nearest texels in source texture
-    vec2 src_tex_c = (src_tex + vec2( 0.0,  0.0)) * tex_step;
-    vec2 src_tex_l = (src_tex + vec2(-1.0,  0.0)) * tex_step;
-    vec2 src_tex_r = (src_tex + vec2( 1.0,  0.0)) * tex_step;
-    vec2 src_tex_t = (src_tex + vec2( 0.0,  1.0)) * tex_step;
-    vec2 src_tex_b = (src_tex + vec2( 0.0, -1.0)) * tex_step;
+    vec2 src_tex_00 = (src_tex + vec2( 0.0,  0.0)) * tex_step;
+    vec2 src_tex_01 = (src_tex + vec2( 0.0,  1.0)) * tex_step;
+    vec2 src_tex_11 = (src_tex + vec2( 1.0,  1.0)) * tex_step;
+    vec2 src_tex_10 = (src_tex + vec2( 1.0,  0.0)) * tex_step;
 
     // clamp texture coordinates because texture coordinates might go out sub region of the texture
     //vec2 min_tex = vec2(0);
@@ -43,14 +35,13 @@ void main()
     //src_tex_10 = clamp(src_tex_10, min_tex, max_tex);
 
     // gather 4
-    float d_c = texture(aTex, src_tex_c).x;
-    float d_l = texture(aTex, src_tex_l).x;
-    float d_r = texture(aTex, src_tex_r).x;
-    float d_t = texture(aTex, src_tex_t).x;
-    float d_b = texture(aTex, src_tex_b).x;
+    float d_00 = texture(aTex, src_tex_00).x;
+    float d_01 = texture(aTex, src_tex_01).x;
+    float d_11 = texture(aTex, src_tex_11).x;
+    float d_10 = texture(aTex, src_tex_10).x;
 
     // maximum of all values
-    float d = max(d_c, max(max(d_l, d_r), max(d_t, d_b)));
+    float d = max(max(d_00, d_11), max(d_01, d_10));
 
     FragColor = vec4(d);
 }

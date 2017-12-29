@@ -32,7 +32,7 @@ pub struct Reduction
 
     program_max: GlProgram,
     u_max_texture_id: GLint,
-    u_max_step_scale: GLint,
+    u_max_size_step: GLint,
 }
 
 impl Reduction {
@@ -45,11 +45,11 @@ impl Reduction {
 
         let program_max = GlProgram::new(VERTEX_SHADER_REDUCTION, FRAGMENT_SHADER_REDUCE_MAX);  
         let u_max_texture_id;
-        let u_max_step_scale;
+        let u_max_size_step;
         unsafe {
             gl::UseProgram(program_max.id);
             u_max_texture_id = gl::GetUniformLocation(program_max.id, c_str!("aTex"));
-            u_max_step_scale = gl::GetUniformLocation(program_max.id, c_str!("step_scale"));
+            u_max_size_step = gl::GetUniformLocation(program_max.id, c_str!("size_step"));
         }
 
         quad_buffer.vertex_array.bind();
@@ -70,7 +70,7 @@ impl Reduction {
             frame_buffers,
             program_max,
             u_max_texture_id,
-            u_max_step_scale,
+            u_max_size_step,
         }        
     }
 
@@ -116,10 +116,12 @@ impl Reduction {
                 gl::Viewport(0, 0, dst_width, dst_height);
                 gl::Scissor(0, 0, dst_width, dst_height);
 
+                println!("{}: size {}, {}", i, dst_width, dst_height);
+
                 // clear is not necessary
 
                 // set step and scaling uniform
-                gl::Uniform4f(self.u_max_step_scale, dst_width as f32 * 2., dst_height as f32 * 2., tex_step_x, tex_step_y);
+                gl::Uniform4f(self.u_max_size_step, dst_width as f32 * 2., dst_height as f32 * 2., tex_step_x, tex_step_y);
 
                 // first time use provided depth texture, otherwise source frame buffer color texture
                 let texture_id;
