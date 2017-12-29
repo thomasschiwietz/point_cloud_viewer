@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use gl;
-use graphic::GlProgram;
+use graphic::{GlProgram, GlFramebuffer};
 use gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
 use std::str;
 use std::mem;
@@ -27,13 +27,16 @@ pub struct Reduction
 {
     quad_buffer: QuadBuffer,
 
+    frame_buffers: [GlFramebuffer; 2],
+
     program: GlProgram,
     u_texture_id: GLint,
 }
 
 impl Reduction {
-    pub fn new() -> Self {
+    pub fn new(width: i32, height: i32) -> Self {
         let quad_buffer = QuadBuffer::new();
+        let frame_buffers = [GlFramebuffer::new(width, height), GlFramebuffer::new(width, height)];
 
         let program = GlProgram::new(VERTEX_SHADER_REDUCTION, FRAGMENT_SHADER_REDUCTION);  
         let u_texture_id;
@@ -57,12 +60,19 @@ impl Reduction {
         }
         Reduction {
             quad_buffer,
+            frame_buffers,
             program,
             u_texture_id,
         }        
     }
 
-    pub fn draw(&self, texture_id: GLuint) {
+    pub fn set_size(&mut self, width: i32, height: i32) {
+        self.frame_buffers[0].set_size(width, height);
+        self.frame_buffers[1].set_size(width, height);
+    }
+
+    pub fn reduce(&self, texture_id: GLuint) {
+        // texture dimensions of texture_ID and internal frame buffer must match!
         unsafe {
             gl::UseProgram(self.program.id);
             //gl::Disable(gl::DEPTH);           // causes opengl error?

@@ -459,7 +459,7 @@ fn main() {
 
     let outlined_box_drawer = OutlinedBoxDrawer::new();
     let zbuffer_drawer = ZBufferDrawer::new();
-    let reduction = Reduction::new();
+    let mut reduction = Reduction::new(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
@@ -537,8 +537,9 @@ fn main() {
                 Event::Window { win_event: WindowEvent::SizeChanged(w, h), .. } => {
                     camera.set_size(w, h);
                     camera_octree.set_size(w / 2, h / 2);
-                    gl_framebuffer.set_size(camera.width, camera.height);
-                    gl_depth_texture.set_size(camera.width, camera.height);
+                    gl_framebuffer.set_size(w ,h);
+                    gl_depth_texture.set_size(w, h);
+                    reduction.set_size(w, h);
                 }
                 _ => (),
             }
@@ -710,7 +711,7 @@ fn main() {
                     gl::ClearColor(0., 0., 0., 1.);
                     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
                 }
-                reduction.draw(gl_depth_texture.id);
+                reduction.reduce(gl_depth_texture.id);
                 
                 gl_framebuffer.unbind();
 
