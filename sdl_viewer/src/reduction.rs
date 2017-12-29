@@ -79,7 +79,7 @@ impl Reduction {
     }
 
     // return texture_id of result
-    pub fn reduce_max(&self, texture_id: GLuint) -> GLuint {
+    pub fn reduce_max(&self, texture_id: GLuint) -> (GLuint, i32, i32) {
         // texture dimensions of texture_ID and internal frame buffer must match!
         // save current viewport
 
@@ -152,8 +152,6 @@ impl Reduction {
             gl::Viewport(0, 0, orig_width, orig_height);
         }
 
-        println!("dst size {} x {}", dst_width * 2, dst_height * 2);
-
-        self.frame_buffers[src_framebuffer].color_texture.id
+        (self.frame_buffers[src_framebuffer].color_texture.id, dst_width * 2, dst_height * 2)
     }
 }

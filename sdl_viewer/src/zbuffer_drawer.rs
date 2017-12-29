@@ -29,6 +29,7 @@ pub struct ZBufferDrawer
 
     program: GlProgram,
     u_texture_id: GLint,
+    u_tex_scale: GLint,
 }
 
 impl ZBufferDrawer {
@@ -37,9 +38,11 @@ impl ZBufferDrawer {
 
         let program = GlProgram::new(VERTEX_SHADER_QUAD, FRAGMENT_SHADER_QUAD);  
         let u_texture_id;
+        let u_tex_scale;
         unsafe {
             gl::UseProgram(program.id);
             u_texture_id = gl::GetUniformLocation(program.id, c_str!("aTex"));
+            u_tex_scale = gl::GetUniformLocation(program.id, c_str!("tex_scale"));
         }
 
         quad_buffer.vertex_array.bind();
@@ -60,10 +63,11 @@ impl ZBufferDrawer {
             quad_buffer,
             program,
             u_texture_id,
+            u_tex_scale,
         }        
     }
 
-    pub fn draw(&self, texture_id: GLuint) {
+    pub fn draw(&self, texture_id: GLuint, texture_scale: f32) {
 
         unsafe {
             gl::UseProgram(self.program.id);
@@ -73,6 +77,8 @@ impl ZBufferDrawer {
             gl::Uniform1i(self.u_texture_id, 0);
             gl::ActiveTexture(gl::TEXTURE0 + 0);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
+
+            gl::Uniform1f(self.u_tex_scale, texture_scale);
 
             self.quad_buffer.draw();
 
