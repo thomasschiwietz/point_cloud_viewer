@@ -86,37 +86,58 @@ impl Reduction {
         let orig_width = self.frame_buffers[0].width;
         let orig_height = self.frame_buffers[0].height;
 
-        let dst_width = orig_width / 2;
-        let dst_height = orig_height / 2;
+        let mut dst_width = orig_width / 2;
+        let mut dst_height = orig_height / 2;
+        let mut src_texture_scale = 1.;
 
-        self.frame_buffers[0].bind();
-        unsafe {
-            gl::ClearColor(1., 1., 1., 1.);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+        let mut src_framebuffer = 1;
+        let mut dst_framebuffer = 0;
 
-            gl::Viewport(0, 0, dst_width, dst_height);
-            gl::Scissor(0, 0, dst_width, dst_height);
-            gl::Enable(gl::SCISSOR_TEST);
+        for i in 0..1 {
+            // setup target frame buffer
+            self.frame_buffers[dst_framebuffer].bind();
+            unsafe {
+                gl::ClearColor(1., 1., 1., 1.);
+                gl::Clear(gl::COLOR_BUFFER_BIT);
+
+                gl::Viewport(0, 0, dst_width, dst_height);
+                gl::Scissor(0, 0, dst_width, dst_height);
+                gl::Enable(gl::SCISSOR_TEST);
+            }
+
+            let max_step = vec![1. / orig_width as f32, 1. / orig_height as f32, src_texture_scale, 0.];
+
+            unsafe {
+                gl::UseProgram(self.program_max.id);
+                gl::Uniform4fv(self.u_max_step, 1, max_step.as_ptr());
+
+                // bind texture to texture unit 0
+                gl::Uniform1i(self.u_max_texture_id, 0);
+                gl::ActiveTexture(gl::TEXTURE0 + 0);
+
+                // source from external texture the first time
+                if i == 0 {
+                    gl::BindTexture(gl::TEXTURE_2D, texture_id);
+                } else {
+                    gl::BindTexture(gl::TEXTURE_2D, self.frame_buffers[src_framebuffer].color_texture.id);                    
+                }
+
+                self.quad_buffer.draw();
+
+                gl::BindTexture(gl::TEXTURE_2D, 0);
+            }
+
+            self.frame_buffers[dst_framebuffer].unbind();
+
+            // swap frame buffers
+            src_framebuffer = 1 - src_framebuffer;
+            dst_framebuffer = 1 - dst_framebuffer;
+
+            // next destination size
+            dst_width /= 2;
+            dst_height /= 2;
+            src_texture_scale /= 2.;
         }
-
-        let max_step = vec![1. / orig_width as f32, 1. / orig_height as f32, 1., 0.];
-
-        unsafe {
-            gl::UseProgram(self.program_max.id);
-            gl::Uniform4fv(self.u_max_step, 1, max_step.as_ptr());
-
-
-            // bind texture to texture unit 0
-            gl::Uniform1i(self.u_max_texture_id, 0);
-            gl::ActiveTexture(gl::TEXTURE0 + 0);
-            gl::BindTexture(gl::TEXTURE_2D, texture_id);
-
-            self.quad_buffer.draw();
-
-            gl::BindTexture(gl::TEXTURE_2D, 0);
-        }
-
-        self.frame_buffers[0].unbind();
 
         unsafe {
             gl::Disable(gl::SCISSOR_TEST);
