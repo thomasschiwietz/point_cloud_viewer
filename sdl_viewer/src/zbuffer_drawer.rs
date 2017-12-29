@@ -67,7 +67,7 @@ impl ZBufferDrawer {
         }        
     }
 
-    pub fn draw(&self, texture_id: GLuint, texture_scale: f32) {
+    pub fn draw(&self, texture_id: GLuint, texture_scale_x: f32, texture_scale_y: f32) {
 
         unsafe {
             gl::UseProgram(self.program.id);
@@ -78,7 +78,7 @@ impl ZBufferDrawer {
             gl::ActiveTexture(gl::TEXTURE0 + 0);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
 
-            gl::Uniform1f(self.u_tex_scale, texture_scale);
+            gl::Uniform4f(self.u_tex_scale, texture_scale_x, texture_scale_y, 0., 0.);
 
             self.quad_buffer.draw();
 

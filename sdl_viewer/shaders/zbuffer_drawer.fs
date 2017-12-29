@@ -4,7 +4,7 @@
 in vec2 tex;
 
 uniform sampler2D aTex;
-uniform float tex_scale;
+uniform vec4 tex_scale;
 
 layout(location = 0) out vec4 FragColor;
 
@@ -17,6 +17,6 @@ float linearize_depth(float depth)
 
 void main()
 {
-    float d = texture(aTex, tex.xy * tex_scale).x;
+    float d = texture(aTex, tex.xy * tex_scale.xy).x;
     FragColor = d < 1.0 ? vec4(1.0 - linearize_depth(d)) : vec4(0.3,0.3,1.0,1.0);   // infinite depth blue sky
 }

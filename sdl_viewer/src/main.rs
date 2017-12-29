@@ -693,15 +693,11 @@ fn main() {
             }
 
             if !show_reduced_depth_buffer {
-                zbuffer_drawer.draw(gl_depth_texture.id, 1.);
+                zbuffer_drawer.draw(gl_depth_texture.id, 1., 1.);
             } else {
                 let (result_texture_id, dst_width, dst_height) = reduction.reduce_max(gl_depth_texture.id);
 
-                //unsafe {
-                //    gl::Viewport(0, 0, camera.width, camera.height);
-                //}
-
-                zbuffer_drawer.draw(result_texture_id, dst_width as f32 / camera.width as f32);
+                zbuffer_drawer.draw(result_texture_id, dst_width as f32 / camera.width as f32, dst_height as f32 / camera.height as f32);
             }
 
             unsafe {
