@@ -71,7 +71,7 @@ impl Reduction {
         self.frame_buffers[1].set_size(width, height);
     }
 
-    pub fn reduce(&self, texture_id: GLuint) {
+    pub fn reduce_max(&self, texture_id: GLuint) {
         // texture dimensions of texture_ID and internal frame buffer must match!
         unsafe {
             gl::UseProgram(self.program.id);
