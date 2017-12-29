@@ -102,7 +102,7 @@ impl Reduction {
             gl::ActiveTexture(gl::TEXTURE0 + 0);
         }
 
-        for i in 0..4 {
+        for i in 0..100 {       // arbitrary high limit
             let step_scale = vec![1. / orig_width as f32, 1. / orig_height as f32, src_texture_scale, 0.];
 
             // setup target frame buffer
@@ -138,6 +138,11 @@ impl Reduction {
             dst_width /= 2;
             dst_height /= 2;
             src_texture_scale /= 2.;
+
+            // limit reduction
+            if dst_width < 8 || dst_height < 8 {
+                break;
+            }
         }
 
         unsafe {
@@ -147,7 +152,7 @@ impl Reduction {
             gl::Viewport(0, 0, orig_width, orig_height);
         }
 
-        //println!("dst size {} x {}", dst_width * 2, dst_height * 2);
+        println!("dst size {} x {}", dst_width * 2, dst_height * 2);
 
         self.frame_buffers[src_framebuffer].color_texture.id
     }
