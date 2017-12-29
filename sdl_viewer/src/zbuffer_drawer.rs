@@ -13,13 +13,11 @@
 // limitations under the License.
 
 use gl;
-use glhelper::{compile_shader, link_program};
 use graphic::GlProgram;
 use gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
 use std::str;
 use std::mem;
 use std::ptr;
-use cgmath::{Array, Matrix, Matrix4};
 use quad_buffer::QuadBuffer;
 
 const FRAGMENT_SHADER_QUAD: &'static str = include_str!("../shaders/zbuffer_drawer.fs");
