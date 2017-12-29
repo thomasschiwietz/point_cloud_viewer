@@ -22,10 +22,10 @@ use std::ptr;
 use cgmath::{Array, Matrix, Matrix4};
 use quad_buffer::QuadBuffer;
 
-const FRAGMENT_SHADER_QUAD: &'static str = include_str!("../shaders/quad_drawer.fs");
+const FRAGMENT_SHADER_QUAD: &'static str = include_str!("../shaders/zbuffer_drawer.fs");
 const VERTEX_SHADER_QUAD: &'static str = include_str!("../shaders/quad_drawer.vs");
 
-pub struct QuadDrawer
+pub struct ZBufferDrawer
 {
     quad_buffer: QuadBuffer,
 
@@ -33,7 +33,7 @@ pub struct QuadDrawer
     u_texture_id: GLint,
 }
 
-impl QuadDrawer {
+impl ZBufferDrawer {
     pub fn new() -> Self {
         let quad_buffer = QuadBuffer::new();
 
@@ -58,7 +58,7 @@ impl QuadDrawer {
             );
         }
 
-        QuadDrawer {
+        ZBufferDrawer {
             quad_buffer,
             program,
             u_texture_id,

@@ -32,7 +32,7 @@ use sdl2::keyboard::Scancode;
 use sdl2::video::GLProfile;
 use sdl_viewer::{Camera, gl};
 use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
-use sdl_viewer::quad_drawer::QuadDrawer;
+use sdl_viewer::zbuffer_drawer::ZBufferDrawer;
 use sdl_viewer::reduction::Reduction;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
 use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlFramebuffer, GlTexture};
@@ -458,7 +458,7 @@ fn main() {
     let mut visible_nodes = Vec::new();
 
     let outlined_box_drawer = OutlinedBoxDrawer::new();
-    let quad_drawer = QuadDrawer::new();
+    let zbuffer_drawer = ZBufferDrawer::new();
     let reduction = Reduction::new();
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -702,7 +702,7 @@ fn main() {
             }
 
             if !show_reduced_depth_buffer {
-                quad_drawer.draw(gl_depth_texture.id);
+                zbuffer_drawer.draw(gl_depth_texture.id);
             } else {
                 gl_framebuffer.set_size(camera.width / 8, camera.height / 8);
                 gl_framebuffer.bind();
@@ -717,7 +717,7 @@ fn main() {
                 unsafe {
                     gl::Clear(gl::DEPTH_BUFFER_BIT);
                 }
-                quad_drawer.draw(gl_framebuffer.color_texture.id);
+                zbuffer_drawer.draw(gl_framebuffer.color_texture.id);
             }
 
             unsafe {
