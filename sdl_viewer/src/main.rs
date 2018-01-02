@@ -484,7 +484,7 @@ fn main() {
     let mut max_reduce_steps = 1;
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
-    camera.set_pos_rot(&Vector3::new(-40., 8.5, 1.), Deg(90.), Deg(90.));
+    camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
     let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
     let mut gl_query = GlQuery::new();
@@ -684,6 +684,7 @@ fn main() {
                 }
             },
             RenderMode::OcclusionQuery => {
+                proj_matrices.clear();                
                 let mut query_state = false;       // render state or query state. should be an enum
                 let node_count = visible_nodes.len();
                 for i in 0..node_count {
@@ -817,48 +818,17 @@ fn main() {
                                 let projection_matrix = camera.get_projection_matrix();
                                 let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
 
-                                // let mut i = 0;
-                                // for y in 0..height {
-                                //     for x in 0..width {
-                                //         let depth = data[i];
-
-                                //         // normalized projection coordinates
-                                //         let proj_pos = Vector4f::new(
-                                //             (x as f32 + 0.5) / (width) as f32 * 2. - 1.,
-                                //             (y as f32 + 0.5) / (height) as f32 * 2. -1.,
-                                //             depth,
-                                //             1.);
-
-                                //         //print!("{};{};{}, ", proj_pos.x, proj_pos.y, proj_pos.z);
-
-                                //         let mut camera_pos = inv_projection_matrix * proj_pos;
-
-                                //         camera_pos.x = camera_pos.x / camera_pos.w;
-                                //         camera_pos.y = camera_pos.y / camera_pos.w;
-                                //         camera_pos.z = camera_pos.z / camera_pos.w;
-
-                                //         //print!("{};{};{};{}, ", camera_pos.x, camera_pos.y, camera_pos.z, camera_pos.w);
-
-                                //         print!("{}, ", depth);//-camera_pos.z);
-                                //         i = i + 1;
-                                //     }
-                                //     println!("");
-                                // }
-                                // println!("");
-
                                 // create frustum for each z-buffer tile
-                                let mut active_tiles = 0;
                                 let mut i = 0;
                                 for y in 0..height {
                                     for x in 0..width {
                                         let depth = data[i];
                                         
                                         // why doesn't this work?
-                                        //if depth == 1.0 {
+                                        //if depth >= 1.0 {
                                         //    continue;
                                         //}
                                         //println!("depth {}", depth);
-                                        //active_tiles += 1;
 
                                         let mut cuboid = Cuboid::new();
 
@@ -907,6 +877,8 @@ fn main() {
                                         let max = cuboid.max();
                                         if -min.z < 10000.0 {         
                                             let proj_matrix = Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.});
+                                            
+                                            // for debug visualization
                                             proj_matrices.push(proj_matrix);
 
                                             // frustum clipper
@@ -915,13 +887,10 @@ fn main() {
                                             let mx = occ_projection_matrix * world_to_camera_matrix;
                                             let frustum = Frustum::from_matrix(&mx);
 
-                                            //for j in (i+1)..node_count {
-                                            for j in 0..node_count {
-                                                if visible_nodes[j].occluder {          // this should never happen
-                                                    continue;
-                                                }
+                                            for j in (i+1)..node_count {
+                                            //for j in 0..node_count {
                                                 if visible_nodes[j].occluded {
-                                                continue;
+                                                    continue;
                                                 }
                                                 if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
                                                     visible_nodes[j].occluded = true;
@@ -932,9 +901,6 @@ fn main() {
                                         i = i + 1;
                                     }
                                 }
-
-                                //println!("active tiles {}", active_tiles);
-                                //println!("");
 
                                 //break;
                             }
@@ -959,44 +925,44 @@ fn main() {
 
                 zbuffer_drawer.draw(texture_id, tex_scale, tex_scale);
 
-                // if width <= 8 || height <= 8 {
-                //     // download data
-                //     let data = reduction.download_data(framebuffer_id, width, height);
+                if width <= 8 || height <= 8 {
+                    // download data
+                    let data = reduction.download_data(framebuffer_id, width, height);
 
-                //     println!("depth data {} x {}", width, height);
+                    println!("depth data {} x {}", width, height);
 
-                //     let projection_matrix = camera.get_projection_matrix();
-                //     let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
+                    let projection_matrix = camera.get_projection_matrix();
+                    let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
 
-                //     let mut i = 0;
-                //     for y in 0..height {
-                //         for x in 0..width {
-                //             let depth = data[i];
+                    let mut i = 0;
+                    for y in 0..height {
+                        for x in 0..width {
+                            let depth = data[i];
 
-                //             // normalized projection coordinates
-                //             let proj_pos = Vector4f::new(
-                //                 (x as f32 + 0.5) / (width) as f32 * 2. - 1.,
-                //                 (y as f32 + 0.5) / (height) as f32 * 2. -1.,
-                //                 depth,
-                //                 1.);
+                            // normalized projection coordinates
+                            let proj_pos = Vector4f::new(
+                                (x as f32 + 0.5) / (width) as f32 * 2. - 1.,
+                                (y as f32 + 0.5) / (height) as f32 * 2. -1.,
+                                depth,
+                                1.);
 
-                //             //print!("{};{};{}, ", proj_pos.x, proj_pos.y, proj_pos.z);
+                            //print!("{};{};{}, ", proj_pos.x, proj_pos.y, proj_pos.z);
 
-                //             let mut camera_pos = inv_projection_matrix * proj_pos;
+                            let mut camera_pos = inv_projection_matrix * proj_pos;
 
-                //             camera_pos.x = camera_pos.x / camera_pos.w;
-                //             camera_pos.y = camera_pos.y / camera_pos.w;
-                //             camera_pos.z = camera_pos.z / camera_pos.w;
+                            camera_pos.x = camera_pos.x / camera_pos.w;
+                            camera_pos.y = camera_pos.y / camera_pos.w;
+                            camera_pos.z = camera_pos.z / camera_pos.w;
 
-                //             //print!("{};{};{};{}, ", camera_pos.x, camera_pos.y, camera_pos.z, camera_pos.w);
+                            //print!("{};{};{};{}, ", camera_pos.x, camera_pos.y, camera_pos.z, camera_pos.w);
 
-                //             print!("{}, ", -camera_pos.z);
-                //             i = i + 1;
-                //         }
-                //         println!("");
-                //     }
-                //     println!("");
-                // }
+                            print!("{}, ", depth);// -camera_pos.z);
+                            i = i + 1;
+                        }
+                        println!("");
+                    }
+                    println!("");
+                }
             }
 
             unsafe {
