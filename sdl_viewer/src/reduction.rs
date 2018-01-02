@@ -88,9 +88,9 @@ impl Reduction {
 
     // return texture_id of result
     pub fn reduce_max(&self, depth_texture_id: GLuint, tex_width: i32, tex_height: i32, max_steps: i32) -> (GLuint, f32) {
-        // texture dimensions of texture_ID and internal frame buffer must match!
-        // save current viewport
+        // TDO(tschiwietz): save current viewport
 
+        // frame buffer size
         let fb_width = self.frame_buffers[0].width;
         let fb_height = self.frame_buffers[0].height;
 
@@ -98,10 +98,12 @@ impl Reduction {
         let fb_step_x = 1. / fb_width as f32;
         let fb_step_y = 1. / fb_height as f32;
 
-        let mut dst_width = fb_width;       // fb_width and height are already the next smaller power of two
+        // fb_width and height are already the next smaller power of two
+        let mut dst_width = fb_width;
         let mut dst_height = fb_height;
         let mut src_texture_scale = 1.;
 
+        // index into double buffer for source and destination
         let mut src_framebuffer = 1;
         let mut dst_framebuffer = 0;
 
@@ -155,7 +157,7 @@ impl Reduction {
             src_step_x = fb_step_x;
             src_step_y = fb_step_y;
 
-            // next destination size. It would be nicer to move this to the top of the loop so that the values are still corrected once the loop is broken
+            // next destination size. 
             dst_width /= 2;
             dst_height /= 2;
             src_texture_scale /= 2.;
@@ -166,11 +168,18 @@ impl Reduction {
             }
         }
 
+        // undo last destination update
+        dst_width *= 2;
+        dst_height *= 2;
+        src_texture_scale *= 2.;
+
+        // download data
+
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, 0);
             gl::Viewport(0, 0, tex_width, tex_height);
         }
 
-        (self.frame_buffers[src_framebuffer].color_texture.id, src_texture_scale * 2.)
+        (self.frame_buffers[src_framebuffer].color_texture.id, src_texture_scale)
     }
 }
