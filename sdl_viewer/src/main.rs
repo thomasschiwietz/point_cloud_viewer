@@ -77,7 +77,7 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
     Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
 }
 
-fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, enable_occ_query: bool)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, discard_occluded: bool)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -103,7 +103,7 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     for visible_node in _visible_nodes {
         if let Some(view) = _node_views.get(&visible_node.id) {
             let mut color = &color_table[3];//visible_node.slice as usize % color_table.len()];
-            if enable_occ_query {
+            if discard_occluded {
                 //if visible_node.occluder {
                     //color = &color_table[0];
                     //draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
@@ -476,7 +476,6 @@ fn main() {
 
     let mut gl_query = GlQuery::new();
     let mut gl_query_node = GlQuery::new();
-    let mut enable_occ_query = false;
     let mut batch_size = 10;
 
     let mut render_mode = RenderMode::BruteForce;
@@ -521,7 +520,6 @@ fn main() {
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
                         Scancode::Num0 => point_size += 0.1,
-                        Scancode::B => enable_occ_query = !enable_occ_query,
                         Scancode::N => { batch_size -= 1; println!("batch_size {}", batch_size) },
                         Scancode::M => { batch_size += 1; println!("batch_size {}", batch_size) },
                         Scancode::X => show_depth_buffer = !show_depth_buffer,
@@ -624,6 +622,9 @@ fn main() {
                             let color = vec![color_intensity,color_intensity,0.,1.];
                             draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                         }
+
+                        visible_node.occluder = false;
+                        visible_node.occluded = false;
                     }
                 }
             },
@@ -663,6 +664,9 @@ fn main() {
                                 break;
                             }
                         }
+
+                        visible_node.occluder = false;
+                        visible_node.occluded = false;
                     }
                 }
             },
@@ -873,7 +877,7 @@ fn main() {
 
                                         // transform back to camera space
                                         for p in proj_pos.iter() {
-                                            let mut camera_pos = inv_projection_matrix * p;
+                                            let camera_pos = inv_projection_matrix * p;
 
                                             let homo_pos = Vector3f::new(
                                                 camera_pos.x / camera_pos.w,
@@ -981,7 +985,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, enable_occ_query);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, true);
         }
 
         window.gl_swap_window();
