@@ -77,7 +77,7 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
     Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
 }
 
-fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, discard_occluded: bool)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, discard_occluded: bool, proj_matrices: &Vec<Matrix4f>)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -141,10 +141,23 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     // frustum
     let color = vec![1.,0.,1.,1.,1.];
     _outlined_box_drawer.update_color(&color);
-    let mx_inv_camera:  Matrix4<f32> = _camera.get_world_to_gl().inverse_transform().unwrap().into();
+    let mx_camera:  Matrix4<f32> = _camera.get_world_to_gl();
+    let mx_inv_camera:  Matrix4<f32> = mx_camera.inverse_transform().unwrap().into();
     let mx = mx_camera_octree * mx_inv_camera;
     _outlined_box_drawer.update_transform(&mx);
     _outlined_box_drawer.draw();
+
+    // clip frustums
+    for proj_matrix in proj_matrices {
+        let color = vec![1.,0.,1.,1.,1.];
+        _outlined_box_drawer.update_color(&color);
+        let view_matrix_camera = &_camera.get_world_to_camera();
+        let mx_frustum = proj_matrix * view_matrix_camera;
+        let mx_inv_frustum:  Matrix4<f32> = mx_frustum.inverse_transform().unwrap().into();
+        let mx = mx_camera_octree * mx_inv_frustum;
+        _outlined_box_drawer.update_transform(&mx);
+        _outlined_box_drawer.draw();
+    }
 
     unsafe {
         gl::Disable(gl::SCISSOR_TEST);
@@ -891,7 +904,7 @@ fn main() {
                                         // compute perspective matrix
                                         let min = cuboid.min();
                                         let max = cuboid.max();
-                                        if (-min.z < 10000.0) {         
+                                        if -min.z < 10000.0 {         
                                             let proj_matrix = Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.});
                                             proj_matrices.push(proj_matrix);
                                         }
@@ -985,7 +998,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, true);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, true, &proj_matrices);
         }
 
         window.gl_swap_window();
