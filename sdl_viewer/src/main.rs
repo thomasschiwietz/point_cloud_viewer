@@ -481,6 +481,8 @@ fn main() {
 
     let mut render_mode = RenderMode::BruteForce;
 
+    let mut slice_limit = 20;    
+
     let mut show_depth_buffer = false;
     let mut show_reduced_depth_buffer = false;
     let mut gl_depth_texture = GlTexture::new(camera.width, camera.height, TextureType::Depth);
@@ -526,6 +528,8 @@ fn main() {
                         Scancode::C => show_reduced_depth_buffer = !show_reduced_depth_buffer,
                         Scancode::R => { max_reduce_steps -= 1; max_reduce_steps = cmp::max(max_reduce_steps, 1); println!("max_reduce_steps {}", max_reduce_steps) },
                         Scancode::T => { max_reduce_steps += 1; println!("max_reduce_steps {}", max_reduce_steps) },
+                        Scancode::H => { slice_limit -= 1; slice_limit = cmp::max(slice_limit, 1); println!("slice_limit {}", slice_limit) },
+                        Scancode::J => { slice_limit += 1; println!("slice_limit {}", slice_limit) },
                         _ => (), 
                     }
                 }
@@ -578,6 +582,7 @@ fn main() {
 
         let num_screen_space_pixels: i64 = camera.width as i64 * camera.height as i64;
         let mut current_num_screen_space_pixels = 0;
+        let mut slice_count = 0;
 
         gl_query.begin_samples_passed();
 
@@ -649,6 +654,11 @@ fn main() {
 
                             if current_num_screen_space_pixels >= num_screen_space_pixels {
                                 current_num_screen_space_pixels = 0;
+
+                                slice_count += 1;
+                                if (slice_count >= slice_limit) {
+                                    break;
+                                }
                             }
                         }
                     }
