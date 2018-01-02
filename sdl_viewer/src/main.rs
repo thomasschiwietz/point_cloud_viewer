@@ -664,12 +664,11 @@ fn main() {
                     }
                 },
                 RenderMode::OcclusionQuery => {
-                    // occ query pass
                     let mut query_state = false;       // render state or query state
                     let node_count = visible_nodes.len();
                     for i in 0..node_count {
                         if visible_nodes[i].occluded {
-                        continue;
+                            continue;
                         }
 
                         if let Some(view) = node_views.get(&visible_nodes[i].id) {
@@ -745,7 +744,43 @@ fn main() {
                     }
                 },
                 RenderMode::ZBuffer => {
+                    let node_count = visible_nodes.len();
+                    for i in 0..node_count {
+                        if visible_nodes[i].occluded {
+                            continue;
+                        }
 
+                        if let Some(view) = node_views.get(&visible_nodes[i].id) {
+
+                            let node_points_drawn = node_drawer.draw(
+                                view,
+                                if use_level_of_detail {
+                                    visible_nodes[i].level_of_detail
+                                } else {
+                                    1
+                                },
+                                point_size, gamma
+                            );
+
+                            num_points_drawn += node_points_drawn;
+                            num_nodes_drawn += 1;
+                            if show_octree_nodes {
+                                let color_intensity = 1.;
+                                let color = vec![color_intensity,color_intensity,0.,1.];
+                                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                            }
+                            current_num_screen_space_pixels += node_points_drawn;
+
+                            if current_num_screen_space_pixels >= num_screen_space_pixels {
+                                current_batch += 1;
+                                current_num_screen_space_pixels = 0;
+
+                                if current_batch >= batch_size {
+                                    // read zbuffer, frustum cull and discard nodes
+                                }
+                            }
+                        }
+                    }
                 },
             }
         }
