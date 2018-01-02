@@ -403,6 +403,13 @@ impl NodeViewContainer {
     }
 }
 
+enum RenderMode {
+    BruteForce,
+    Limited,
+    OcclusionQuery,
+    ZBuffer,
+}
+
 fn main() {
     let matches = clap::App::new("sdl_viewer")
         .args(
@@ -472,6 +479,8 @@ fn main() {
     let mut enable_occ_query = false;
     let mut batch_size = 10;
 
+    let mut render_mode = RenderMode::BruteForce;
+
     let mut show_depth_buffer = false;
     let mut show_reduced_depth_buffer = false;
     let mut gl_depth_texture = GlTexture::new(camera.width, camera.height, TextureType::Depth);
@@ -502,8 +511,10 @@ fn main() {
                         Scancode::F => force_load_all = true,
                         Scancode::O => show_octree_nodes = !show_octree_nodes,
                         Scancode::P => show_octree_view = !show_octree_view,
-                        Scancode::Num1 => { max_reduce_steps -= 1; max_reduce_steps = cmp::max(max_reduce_steps, 1); println!("max_reduce_steps {}", max_reduce_steps) },
-                        Scancode::Num2 => { max_reduce_steps += 1; println!("max_reduce_steps {}", max_reduce_steps) },
+                        Scancode::Num1 => { render_mode = RenderMode::BruteForce; println!("render mode: brute force"); },
+                        Scancode::Num2 => { render_mode = RenderMode::Limited; println!("render mode: limited"); },
+                        Scancode::Num3 => { render_mode = RenderMode::OcclusionQuery; println!("render mode: occlusion query"); },
+                        Scancode::Num4 => { render_mode = RenderMode::ZBuffer; println!("render mode: zbuffer"); },
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
@@ -513,6 +524,8 @@ fn main() {
                         Scancode::M => { batch_size += 1; println!("batch_size {}", batch_size) },
                         Scancode::X => show_depth_buffer = !show_depth_buffer,
                         Scancode::C => show_reduced_depth_buffer = !show_reduced_depth_buffer,
+                        Scancode::R => { max_reduce_steps -= 1; max_reduce_steps = cmp::max(max_reduce_steps, 1); println!("max_reduce_steps {}", max_reduce_steps) },
+                        Scancode::T => { max_reduce_steps += 1; println!("max_reduce_steps {}", max_reduce_steps) },
                         _ => (), 
                     }
                 }
@@ -576,115 +589,122 @@ fn main() {
             gl::ClearColor(0., 0., 0., 1.);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-            if !enable_occ_query {
-                for i in 0..visible_nodes.len() {
-                    let visible_node = &mut visible_nodes[i];
+            match render_mode {
+                RenderMode::BruteForce => {
+                    for i in 0..visible_nodes.len() {
+                        let visible_node = &mut visible_nodes[i];
 
-                    if let Some(view) = node_views.get(&visible_node.id) {
+                        if let Some(view) = node_views.get(&visible_node.id) {
 
-                        let node_points_drawn = node_drawer.draw(
-                            view,
-                            if use_level_of_detail {
-                                visible_node.level_of_detail
-                            } else {
-                                1
-                            },
-                            point_size, gamma
-                        );
+                            let node_points_drawn = node_drawer.draw(
+                                view,
+                                if use_level_of_detail {
+                                    visible_node.level_of_detail
+                                } else {
+                                    1
+                                },
+                                point_size, gamma
+                            );
 
-                        num_points_drawn += node_points_drawn;
-                        num_nodes_drawn += 1;
-                        if max_number_of_points_per_node < node_points_drawn {
-                            max_number_of_points_per_node = node_points_drawn;
+                            num_points_drawn += node_points_drawn;
+                            num_nodes_drawn += 1;
+                            if max_number_of_points_per_node < node_points_drawn {
+                                max_number_of_points_per_node = node_points_drawn;
+                            }
+                            if show_octree_nodes {
+                                let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
+                                let color = vec![color_intensity,color_intensity,0.,1.];
+                                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                            }
+                            current_slice_pixel_count += node_points_drawn;
                         }
-                        if show_octree_nodes {
-                            let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
-                            let color = vec![color_intensity,color_intensity,0.,1.];
-                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                        }
-                        current_slice_pixel_count += node_points_drawn;
                     }
-                }
-            } else {
-                // occ query pass
-                let mut query_state = false;       // render state or query state
-                let node_count = visible_nodes.len();
-                for i in 0..node_count {
-                    if visible_nodes[i].occluded {
-                       continue;
-                    }
-
-                    if let Some(view) = node_views.get(&visible_nodes[i].id) {
-
-                        if query_state {
-                            gl_query_node.begin_samples_passed();   
+                },
+                RenderMode::Limited => {},
+                RenderMode::OcclusionQuery => {
+                    // occ query pass
+                    let mut query_state = false;       // render state or query state
+                    let node_count = visible_nodes.len();
+                    for i in 0..node_count {
+                        if visible_nodes[i].occluded {
+                        continue;
                         }
 
-                        let node_points_drawn = node_drawer.draw(
-                            view,
-                            if use_level_of_detail {
-                                visible_nodes[i].level_of_detail
-                            } else {
-                                1
-                            },
-                            point_size, gamma
-                        );
+                        if let Some(view) = node_views.get(&visible_nodes[i].id) {
 
-                        if query_state {
-                            gl_query_node.end();
-                            let samples_passed = gl_query_node.query_samples_passed();
+                            if query_state {
+                                gl_query_node.begin_samples_passed();   
+                            }
 
-                            let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
-                            if pass_ratio < 0.001 {
+                            let node_points_drawn = node_drawer.draw(
+                                view,
+                                if use_level_of_detail {
+                                    visible_nodes[i].level_of_detail
+                                } else {
+                                    1
+                                },
+                                point_size, gamma
+                            );
 
-                                visible_nodes[i].occluder = true;
+                            if query_state {
+                                gl_query_node.end();
+                                let samples_passed = gl_query_node.query_samples_passed();
 
-                                let world_to_camera_matrix = camera.get_world_to_camera();
-                                let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
-                                let mx = occ_projection_matrix * world_to_camera_matrix;
-                                let frustum = Frustum::from_matrix(&mx);
+                                let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
+                                if pass_ratio < 0.001 {
 
-                                for j in (i+1)..node_count {
-                                    if visible_nodes[j].occluder {          // this should never happen
+                                    visible_nodes[i].occluder = true;
+
+                                    let world_to_camera_matrix = camera.get_world_to_camera();
+                                    let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
+                                    let mx = occ_projection_matrix * world_to_camera_matrix;
+                                    let frustum = Frustum::from_matrix(&mx);
+
+                                    for j in (i+1)..node_count {
+                                        if visible_nodes[j].occluder {          // this should never happen
+                                            continue;
+                                        }
+                                        if visible_nodes[j].occluded {
                                         continue;
-                                    }
-                                    if visible_nodes[j].occluded {
-                                       continue;
-                                    }
-                                    if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
-                                        visible_nodes[j].occluded = true;
+                                        }
+                                        if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
+                                            visible_nodes[j].occluded = true;
+                                        }
                                     }
                                 }
+                                num_queries += 1;
                             }
-                            num_queries += 1;
-                        }
 
-                        num_points_drawn += node_points_drawn;
-                        num_nodes_drawn += 1;
-                        if show_octree_nodes {
-                            let color_intensity = 1.;
-                            let color = vec![color_intensity,color_intensity,0.,1.];
-                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                        }
-                        current_slice_pixel_count += node_points_drawn;
+                            num_points_drawn += node_points_drawn;
+                            num_nodes_drawn += 1;
+                            if show_octree_nodes {
+                                let color_intensity = 1.;
+                                let color = vec![color_intensity,color_intensity,0.,1.];
+                                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                            }
+                            current_slice_pixel_count += node_points_drawn;
 
-                        if current_slice_pixel_count >= slice_pixel_count {
-                            current_batch += 1;
-                            current_slice_pixel_count = 0;
+                            if current_slice_pixel_count >= slice_pixel_count {
+                                current_batch += 1;
+                                current_slice_pixel_count = 0;
 
-                            if !query_state {
-                                if current_batch >= batch_size {
-                                    query_state = true;
+                                if !query_state {
+                                    if current_batch >= batch_size {
+                                        query_state = true;
+                                    }
+                                } else {
+                                    // finish query state after one batch
+                                    query_state = false;
+                                    
+                                    //break;
                                 }
-                            } else {
-                                // finish query state after one batch
-                                query_state = false;
-                                
-                                //break;
                             }
                         }
                     }
-                }
+                },
+                RenderMode::ZBuffer => {
+
+                },
             }
         }
 
@@ -747,7 +767,6 @@ fn main() {
                 gl::BindTexture(gl::TEXTURE_2D, 0);
             }
         }
-
 
         gl_query.end();
 
