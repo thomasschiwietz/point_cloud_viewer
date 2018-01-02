@@ -586,6 +586,12 @@ fn main() {
             node_views.reset_load_queue();
         } else {
             use_level_of_detail = false;
+
+            // clear occlusion
+            for i in 0..visible_nodes.len() {
+                visible_nodes[i].occluder = false;
+                visible_nodes[i].occluded = false;
+            } 
         }
 
         let mut num_points_drawn = 0;
@@ -635,9 +641,6 @@ fn main() {
                             let color = vec![color_intensity,color_intensity,0.,1.];
                             draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                         }
-
-                        visible_node.occluder = false;
-                        visible_node.occluded = false;
                     }
                 }
             },
@@ -677,9 +680,6 @@ fn main() {
                                 break;
                             }
                         }
-
-                        visible_node.occluder = false;
-                        visible_node.occluded = false;
                     }
                 }
             },
@@ -718,6 +718,7 @@ fn main() {
 
                                 let world_to_camera_matrix = camera.get_world_to_camera();
                                 let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
+                                proj_matrices.push(occ_projection_matrix);
                                 let mx = occ_projection_matrix * world_to_camera_matrix;
                                 let frustum = Frustum::from_matrix(&mx);
 
@@ -914,7 +915,8 @@ fn main() {
                                             let mx = occ_projection_matrix * world_to_camera_matrix;
                                             let frustum = Frustum::from_matrix(&mx);
 
-                                            for j in (i+1)..node_count {
+                                            //for j in (i+1)..node_count {
+                                            for j in 0..node_count {
                                                 if visible_nodes[j].occluder {          // this should never happen
                                                     continue;
                                                 }
