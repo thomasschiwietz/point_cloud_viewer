@@ -174,6 +174,31 @@ impl Reduction {
         src_texture_scale *= 2.;
 
         // download data
+        let mut depth_data = Vec::new();
+        depth_data.resize((dst_width * dst_height) as usize, 0.);
+        for i in 0..depth_data.len() {
+            depth_data[i] = i as f32;
+        }
+        self.frame_buffers[src_framebuffer].bind();        
+        unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, self.frame_buffers[src_framebuffer].color_texture.id);
+            gl::ReadBuffer(gl::FRONT);
+            gl::ReadPixels(0, 0, dst_width, dst_height, gl::RED, gl::FLOAT, mem::transmute(&depth_data[0]));
+        }
+        self.frame_buffers[src_framebuffer].unbind();        
+
+        if dst_width <= 8 || dst_height <= 8 {
+            println!("depth data {} x {}", dst_width, dst_height);
+            let mut i = 0;
+            for y in 0..dst_height {
+                for x in 0..dst_width {
+                    print!("{}, ", depth_data[i]);
+                    i = i + 1;
+                }
+                println!("");
+            }
+            println!("");
+        }
 
         unsafe {
             gl::BindTexture(gl::TEXTURE_2D, 0);
