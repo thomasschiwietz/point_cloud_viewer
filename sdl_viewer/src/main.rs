@@ -576,8 +576,8 @@ fn main() {
         let mut num_points_drawn = 0;
         let mut num_nodes_drawn = 0;
 
-        let slice_pixel_count: i64 = camera.width as i64 * camera.height as i64;
-        let mut current_slice_pixel_count = 0;
+        let num_screen_space_pixels: i64 = camera.width as i64 * camera.height as i64;
+        let mut current_num_screen_space_pixels = 0;
 
         gl_query.begin_samples_passed();
 
@@ -616,11 +616,43 @@ fn main() {
                                 let color = vec![color_intensity,color_intensity,0.,1.];
                                 draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                             }
-                            current_slice_pixel_count += node_points_drawn;
                         }
                     }
                 },
-                RenderMode::Limited => {},
+                RenderMode::Limited => {
+                    for i in 0..visible_nodes.len() {
+                        let visible_node = &mut visible_nodes[i];
+
+                        if let Some(view) = node_views.get(&visible_node.id) {
+
+                            let node_points_drawn = node_drawer.draw(
+                                view,
+                                if use_level_of_detail {
+                                    visible_node.level_of_detail
+                                } else {
+                                    1
+                                },
+                                point_size, gamma
+                            );
+
+                            num_points_drawn += node_points_drawn;
+                            num_nodes_drawn += 1;
+                            if max_number_of_points_per_node < node_points_drawn {
+                                max_number_of_points_per_node = node_points_drawn;
+                            }
+                            if show_octree_nodes {
+                                let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
+                                let color = vec![color_intensity,color_intensity,0.,1.];
+                                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                            }
+                            current_num_screen_space_pixels += node_points_drawn;
+
+                            if current_num_screen_space_pixels >= num_screen_space_pixels {
+                                current_num_screen_space_pixels = 0;
+                            }
+                        }
+                    }
+                },
                 RenderMode::OcclusionQuery => {
                     // occ query pass
                     let mut query_state = false;       // render state or query state
@@ -682,11 +714,11 @@ fn main() {
                                 let color = vec![color_intensity,color_intensity,0.,1.];
                                 draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
                             }
-                            current_slice_pixel_count += node_points_drawn;
+                            current_num_screen_space_pixels += node_points_drawn;
 
-                            if current_slice_pixel_count >= slice_pixel_count {
+                            if current_num_screen_space_pixels >= num_screen_space_pixels {
                                 current_batch += 1;
-                                current_slice_pixel_count = 0;
+                                current_num_screen_space_pixels = 0;
 
                                 if !query_state {
                                     if current_batch >= batch_size {
