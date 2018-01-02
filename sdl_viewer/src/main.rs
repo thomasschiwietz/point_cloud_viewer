@@ -62,7 +62,6 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     let color_table = [
         vec![1.,0.,0.,1.],
         vec![0.,1.,0.,1.],
-        vec![0.,1.,0.,1.],
         vec![0.,0.,1.,1.],
         vec![1.,1.,0.,1.],
         vec![0.,1.,1.,1.],
@@ -83,7 +82,7 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
             }
         }
         if let Some(view) = _node_views.get(&visible_node.id) {
-            let color = &color_table[visible_node.slice as usize % color_table.len()];
+            let color = &color_table[3];//visible_node.slice as usize % color_table.len()];
             draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
         }
     }
