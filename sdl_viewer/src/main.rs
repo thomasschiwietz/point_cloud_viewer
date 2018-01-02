@@ -789,6 +789,9 @@ fn main() {
 
                                 // download data
                                 let data = reduction.download_data(framebuffer_id, width, height);
+                                unsafe {
+                                    gl::Viewport(0, 0, camera.width, camera.height);
+                                }
 
                                 let projection_matrix = camera.get_projection_matrix();
                                 let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
