@@ -708,10 +708,33 @@ fn main() {
                     let data = reduction.download_data(framebuffer_id, width, height);
 
                     println!("depth data {} x {}", width, height);
+
+                    let projection_matrix = camera.get_projection_matrix();
+                    let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
+
                     let mut i = 0;
-                    for _y in 0..height {
-                        for _x in 0..width {
-                            print!("{}, ", data[i]);
+                    for y in 0..height {
+                        for x in 0..width {
+                            let depth = data[i];
+
+                            // normalized projection coordinates
+                            let proj_pos = Vector4f::new(
+                                (x as f32 + 0.5) / (width) as f32 * 2. - 1.,
+                                (y as f32 + 0.5) / (height) as f32 * 2. -1.,
+                                depth,
+                                1.);
+
+                            //print!("{};{};{}, ", proj_pos.x, proj_pos.y, proj_pos.z);
+
+                            let mut camera_pos = inv_projection_matrix * proj_pos;
+
+                            camera_pos.x = camera_pos.x / camera_pos.w;
+                            camera_pos.y = camera_pos.y / camera_pos.w;
+                            camera_pos.z = camera_pos.z / camera_pos.w;
+
+                            //print!("{};{};{};{}, ", camera_pos.x, camera_pos.y, camera_pos.z, camera_pos.w);
+
+                            print!("{}, ", -camera_pos.z);
                             i = i + 1;
                         }
                         println!("");
