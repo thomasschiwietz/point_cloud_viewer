@@ -593,196 +593,233 @@ fn main() {
             gl::Viewport(0, 0, camera.width, camera.height);
             gl::ClearColor(0., 0., 0., 1.);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        }
 
-            match render_mode {
-                RenderMode::BruteForce => {
-                    for i in 0..visible_nodes.len() {
-                        let visible_node = &mut visible_nodes[i];
+        match render_mode {
+            RenderMode::BruteForce => {
+                for i in 0..visible_nodes.len() {
+                    let visible_node = &mut visible_nodes[i];
 
-                        if let Some(view) = node_views.get(&visible_node.id) {
+                    if let Some(view) = node_views.get(&visible_node.id) {
 
-                            let node_points_drawn = node_drawer.draw(
-                                view,
-                                if use_level_of_detail {
-                                    visible_node.level_of_detail
-                                } else {
-                                    1
-                                },
-                                point_size, gamma
-                            );
+                        let node_points_drawn = node_drawer.draw(
+                            view,
+                            if use_level_of_detail {
+                                visible_node.level_of_detail
+                            } else {
+                                1
+                            },
+                            point_size, gamma
+                        );
 
-                            num_points_drawn += node_points_drawn;
-                            num_nodes_drawn += 1;
-                            if max_number_of_points_per_node < node_points_drawn {
-                                max_number_of_points_per_node = node_points_drawn;
-                            }
-                            if show_octree_nodes {
-                                let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
-                                let color = vec![color_intensity,color_intensity,0.,1.];
-                                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                        num_points_drawn += node_points_drawn;
+                        num_nodes_drawn += 1;
+                        if max_number_of_points_per_node < node_points_drawn {
+                            max_number_of_points_per_node = node_points_drawn;
+                        }
+                        if show_octree_nodes {
+                            let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
+                            let color = vec![color_intensity,color_intensity,0.,1.];
+                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                        }
+                    }
+                }
+            },
+            RenderMode::Limited => {
+                for i in 0..visible_nodes.len() {
+                    let visible_node = &mut visible_nodes[i];
+
+                    if let Some(view) = node_views.get(&visible_node.id) {
+
+                        let node_points_drawn = node_drawer.draw(
+                            view,
+                            if use_level_of_detail {
+                                visible_node.level_of_detail
+                            } else {
+                                1
+                            },
+                            point_size, gamma
+                        );
+
+                        num_points_drawn += node_points_drawn;
+                        num_nodes_drawn += 1;
+                        if max_number_of_points_per_node < node_points_drawn {
+                            max_number_of_points_per_node = node_points_drawn;
+                        }
+                        if show_octree_nodes {
+                            let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
+                            let color = vec![color_intensity,color_intensity,0.,1.];
+                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                        }
+                        current_num_screen_space_pixels += node_points_drawn;
+
+                        if current_num_screen_space_pixels >= num_screen_space_pixels {
+                            current_num_screen_space_pixels = 0;
+
+                            slice_count += 1;
+                            if slice_count >= slice_limit {
+                                break;
                             }
                         }
                     }
-                },
-                RenderMode::Limited => {
-                    for i in 0..visible_nodes.len() {
-                        let visible_node = &mut visible_nodes[i];
-
-                        if let Some(view) = node_views.get(&visible_node.id) {
-
-                            let node_points_drawn = node_drawer.draw(
-                                view,
-                                if use_level_of_detail {
-                                    visible_node.level_of_detail
-                                } else {
-                                    1
-                                },
-                                point_size, gamma
-                            );
-
-                            num_points_drawn += node_points_drawn;
-                            num_nodes_drawn += 1;
-                            if max_number_of_points_per_node < node_points_drawn {
-                                max_number_of_points_per_node = node_points_drawn;
-                            }
-                            if show_octree_nodes {
-                                let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
-                                let color = vec![color_intensity,color_intensity,0.,1.];
-                                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                            }
-                            current_num_screen_space_pixels += node_points_drawn;
-
-                            if current_num_screen_space_pixels >= num_screen_space_pixels {
-                                current_num_screen_space_pixels = 0;
-
-                                slice_count += 1;
-                                if (slice_count >= slice_limit) {
-                                    break;
-                                }
-                            }
-                        }
+                }
+            },
+            RenderMode::OcclusionQuery => {
+                let mut query_state = false;       // render state or query state. should be an enum
+                let node_count = visible_nodes.len();
+                for i in 0..node_count {
+                    if visible_nodes[i].occluded {
+                    continue;
                     }
-                },
-                RenderMode::OcclusionQuery => {
-                    let mut query_state = false;       // render state or query state
-                    let node_count = visible_nodes.len();
-                    for i in 0..node_count {
-                        if visible_nodes[i].occluded {
-                            continue;
+
+                    if let Some(view) = node_views.get(&visible_nodes[i].id) {
+
+                        if query_state {
+                            gl_query_node.begin_samples_passed();   
                         }
 
-                        if let Some(view) = node_views.get(&visible_nodes[i].id) {
+                        let node_points_drawn = node_drawer.draw(
+                            view,
+                            if use_level_of_detail {
+                                visible_nodes[i].level_of_detail
+                            } else {
+                                1
+                            },
+                            point_size, gamma
+                        );
 
-                            if query_state {
-                                gl_query_node.begin_samples_passed();   
-                            }
+                        if query_state {
+                            gl_query_node.end();
+                            let samples_passed = gl_query_node.query_samples_passed();
 
-                            let node_points_drawn = node_drawer.draw(
-                                view,
-                                if use_level_of_detail {
-                                    visible_nodes[i].level_of_detail
-                                } else {
-                                    1
-                                },
-                                point_size, gamma
-                            );
+                            let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
+                            if pass_ratio < 0.001 {
 
-                            if query_state {
-                                gl_query_node.end();
-                                let samples_passed = gl_query_node.query_samples_passed();
+                                visible_nodes[i].occluder = true;
 
-                                let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
-                                if pass_ratio < 0.001 {
+                                let world_to_camera_matrix = camera.get_world_to_camera();
+                                let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
+                                let mx = occ_projection_matrix * world_to_camera_matrix;
+                                let frustum = Frustum::from_matrix(&mx);
 
-                                    visible_nodes[i].occluder = true;
-
-                                    let world_to_camera_matrix = camera.get_world_to_camera();
-                                    let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
-                                    let mx = occ_projection_matrix * world_to_camera_matrix;
-                                    let frustum = Frustum::from_matrix(&mx);
-
-                                    for j in (i+1)..node_count {
-                                        if visible_nodes[j].occluder {          // this should never happen
-                                            continue;
-                                        }
-                                        if visible_nodes[j].occluded {
+                                for j in (i+1)..node_count {
+                                    if visible_nodes[j].occluder {          // this should never happen
                                         continue;
-                                        }
-                                        if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
-                                            visible_nodes[j].occluded = true;
-                                        }
+                                    }
+                                    if visible_nodes[j].occluded {
+                                    continue;
+                                    }
+                                    if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
+                                        visible_nodes[j].occluded = true;
                                     }
                                 }
-                                num_queries += 1;
                             }
-
-                            num_points_drawn += node_points_drawn;
-                            num_nodes_drawn += 1;
-                            if show_octree_nodes {
-                                let color_intensity = 1.;
-                                let color = vec![color_intensity,color_intensity,0.,1.];
-                                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                            }
-                            current_num_screen_space_pixels += node_points_drawn;
-
-                            if current_num_screen_space_pixels >= num_screen_space_pixels {
-                                current_batch += 1;
-                                current_num_screen_space_pixels = 0;
-
-                                if !query_state {
-                                    if current_batch >= batch_size {
-                                        query_state = true;
-                                    }
-                                } else {
-                                    // finish query state after one batch
-                                    query_state = false;
-                                    
-                                    //break;
-                                }
-                            }
-                        }
-                    }
-                },
-                RenderMode::ZBuffer => {
-                    let node_count = visible_nodes.len();
-                    for i in 0..node_count {
-                        if visible_nodes[i].occluded {
-                            continue;
+                            num_queries += 1;
                         }
 
-                        if let Some(view) = node_views.get(&visible_nodes[i].id) {
+                        num_points_drawn += node_points_drawn;
+                        num_nodes_drawn += 1;
+                        if show_octree_nodes {
+                            let color_intensity = 1.;
+                            let color = vec![color_intensity,color_intensity,0.,1.];
+                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                        }
+                        current_num_screen_space_pixels += node_points_drawn;
 
-                            let node_points_drawn = node_drawer.draw(
-                                view,
-                                if use_level_of_detail {
-                                    visible_nodes[i].level_of_detail
-                                } else {
-                                    1
-                                },
-                                point_size, gamma
-                            );
+                        if current_num_screen_space_pixels >= num_screen_space_pixels {
+                            current_batch += 1;
+                            current_num_screen_space_pixels = 0;
 
-                            num_points_drawn += node_points_drawn;
-                            num_nodes_drawn += 1;
-                            if show_octree_nodes {
-                                let color_intensity = 1.;
-                                let color = vec![color_intensity,color_intensity,0.,1.];
-                                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                            }
-                            current_num_screen_space_pixels += node_points_drawn;
-
-                            if current_num_screen_space_pixels >= num_screen_space_pixels {
-                                current_batch += 1;
-                                current_num_screen_space_pixels = 0;
-
+                            if !query_state {
                                 if current_batch >= batch_size {
-                                    // read zbuffer, frustum cull and discard nodes
+                                    query_state = true;
+                                }
+                            } else {
+                                // finish query state after one batch
+                                query_state = false;
+                                
+                                //break;
+                            }
+                        }
+                    }
+                }
+            },
+            RenderMode::ZBuffer => {
+                let node_count = visible_nodes.len();
+                for i in 0..node_count {
+                    if visible_nodes[i].occluded {
+                        continue;
+                    }
+
+                    if let Some(view) = node_views.get(&visible_nodes[i].id) {
+
+                        let node_points_drawn = node_drawer.draw(
+                            view,
+                            if use_level_of_detail {
+                                visible_nodes[i].level_of_detail
+                            } else {
+                                1
+                            },
+                            point_size, gamma
+                        );
+
+                        num_points_drawn += node_points_drawn;
+                        num_nodes_drawn += 1;
+                        if show_octree_nodes {
+                            let color_intensity = 1.;
+                            let color = vec![color_intensity,color_intensity,0.,1.];
+                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+        }
+                        current_num_screen_space_pixels += node_points_drawn;
+
+                        if current_num_screen_space_pixels >= num_screen_space_pixels {
+                            current_batch += 1;
+                            current_num_screen_space_pixels = 0;
+
+                            if current_batch >= batch_size {
+                                // copy depth buffer to texture
+                                unsafe {
+                                    gl::BindTexture(gl::TEXTURE_2D, gl_depth_texture.id);
+                                    gl::ReadBuffer(gl::BACK);
+                                    gl::CopyTexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT, 0, 0, camera.width, camera.height, 0);
+                                }
+
+                                // reduce z-buffer
+                                let (_texture_id, _tex_scale, framebuffer_id, width, height) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, 10);
+
+                                // download data
+                                let data = reduction.download_data(framebuffer_id, width, height);
+
+                                let projection_matrix = camera.get_projection_matrix();
+                                let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
+
+                                // create frustum for each z-buffer tile
+                                let mut i = 0;
+                                for y in 0..height {
+                                    for x in 0..width {
+                                        let depth = data[i];
+
+                                        // normalized coordinates in projection space
+                                        let proj_pos = Vector4f::new(
+                                            (x as f32 + 0.5) / (width) as f32 * 2. - 1.,
+                                            (y as f32 + 0.5) / (height) as f32 * 2. -1.,
+                                            depth,
+                                            1.);
+
+                                        // transform back to camera space
+                                        let mut camera_pos = inv_projection_matrix * proj_pos;
+                                        camera_pos.x = camera_pos.x / camera_pos.w;
+                                        camera_pos.y = camera_pos.y / camera_pos.w;
+                                        camera_pos.z = camera_pos.z / camera_pos.w;
+
+                                        i = i + 1;
+                                    }
                                 }
                             }
                         }
                     }
-                },
-            }
+                }
+            },
         }
 
         if show_depth_buffer {
@@ -796,9 +833,9 @@ fn main() {
             if !show_reduced_depth_buffer {
                 zbuffer_drawer.draw(gl_depth_texture.id, 1., 1.);
             } else {
-                let (result_texture_id, tex_scale, framebuffer_id, width, height) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, max_reduce_steps);
+                let (texture_id, tex_scale, framebuffer_id, width, height) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, max_reduce_steps);
 
-                zbuffer_drawer.draw(result_texture_id, tex_scale, tex_scale);
+                zbuffer_drawer.draw(texture_id, tex_scale, tex_scale);
 
                 if width <= 8 || height <= 8 {
                     // download data
