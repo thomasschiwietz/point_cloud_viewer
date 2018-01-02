@@ -584,6 +584,8 @@ fn main() {
         let mut current_num_screen_space_pixels = 0;
         let mut slice_count = 0;
 
+        let mut proj_matrices = Vec::new();
+
         gl_query.begin_samples_passed();
 
         let mut current_batch = 0;
@@ -745,6 +747,7 @@ fn main() {
                 }
             },
             RenderMode::ZBuffer => {
+                proj_matrices.clear();
                 let node_count = visible_nodes.len();
                 for i in 0..node_count {
                     if visible_nodes[i].occluded {
@@ -796,28 +799,107 @@ fn main() {
                                 let projection_matrix = camera.get_projection_matrix();
                                 let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
 
+                                // let mut i = 0;
+                                // for y in 0..height {
+                                //     for x in 0..width {
+                                //         let depth = data[i];
+
+                                //         // normalized projection coordinates
+                                //         let proj_pos = Vector4f::new(
+                                //             (x as f32 + 0.5) / (width) as f32 * 2. - 1.,
+                                //             (y as f32 + 0.5) / (height) as f32 * 2. -1.,
+                                //             depth,
+                                //             1.);
+
+                                //         //print!("{};{};{}, ", proj_pos.x, proj_pos.y, proj_pos.z);
+
+                                //         let mut camera_pos = inv_projection_matrix * proj_pos;
+
+                                //         camera_pos.x = camera_pos.x / camera_pos.w;
+                                //         camera_pos.y = camera_pos.y / camera_pos.w;
+                                //         camera_pos.z = camera_pos.z / camera_pos.w;
+
+                                //         //print!("{};{};{};{}, ", camera_pos.x, camera_pos.y, camera_pos.z, camera_pos.w);
+
+                                //         print!("{}, ", depth);//-camera_pos.z);
+                                //         i = i + 1;
+                                //     }
+                                //     println!("");
+                                // }
+                                // println!("");
+
                                 // create frustum for each z-buffer tile
+                                let mut active_tiles = 0;
                                 let mut i = 0;
                                 for y in 0..height {
                                     for x in 0..width {
                                         let depth = data[i];
+                                        
+                                        // why doesn't this work?
+                                        //if depth == 1.0 {
+                                        //    continue;
+                                        //}
+                                        //println!("depth {}", depth);
+                                        //active_tiles += 1;
 
-                                        // normalized coordinates in projection space
-                                        let proj_pos = Vector4f::new(
-                                            (x as f32 + 0.5) / (width) as f32 * 2. - 1.,
-                                            (y as f32 + 0.5) / (height) as f32 * 2. -1.,
+                                        let mut cuboid = Cuboid::new();
+
+                                        let mut proj_pos = Vec::new();
+
+                                        // normalized coordinates in projection space for all four vertices of the tile
+                                        proj_pos.push(Vector4f::new(
+                                            (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
+                                            (y as f32 + 0.0) / (height) as f32 * 2. -1.,
                                             depth,
-                                            1.);
+                                            1.));
+
+                                        proj_pos.push(Vector4f::new(
+                                            (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
+                                            (y as f32 + 1.0) / (height) as f32 * 2. -1.,
+                                            depth,
+                                            1.));
+
+                                        proj_pos.push(Vector4f::new(
+                                            (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
+                                            (y as f32 + 1.0) / (height) as f32 * 2. -1.,
+                                            depth,
+                                            1.));
+
+                                        proj_pos.push(Vector4f::new(
+                                            (x as f32 + 1.) / (width) as f32 * 2. - 1.,
+                                            (y as f32 + 1.) / (height) as f32 * 2. -1.,
+                                            depth,
+                                            1.));
 
                                         // transform back to camera space
-                                        let mut camera_pos = inv_projection_matrix * proj_pos;
-                                        camera_pos.x = camera_pos.x / camera_pos.w;
-                                        camera_pos.y = camera_pos.y / camera_pos.w;
-                                        camera_pos.z = camera_pos.z / camera_pos.w;
+                                        for p in proj_pos.iter() {
+                                            let mut camera_pos = inv_projection_matrix * p;
+
+                                            let homo_pos = Vector3f::new(
+                                                camera_pos.x / camera_pos.w,
+                                                camera_pos.y / camera_pos.w,
+                                                camera_pos.z / camera_pos.w,
+                                            );
+
+                                            cuboid.update(&homo_pos);
+                                        }
+
+                                        // compute perspective matrix
+                                        let min = cuboid.min();
+                                        let max = cuboid.max();
+                                        if (-min.z < 10000.0) {         
+                                            let proj_matrix = Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.});
+                                            proj_matrices.push(proj_matrix);
+                                        }
 
                                         i = i + 1;
                                     }
                                 }
+
+                                println!("active tiles {}", active_tiles);
+                                println!("");
+
+                                break;
                             }
                         }
                     }
