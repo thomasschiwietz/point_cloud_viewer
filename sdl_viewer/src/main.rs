@@ -699,9 +699,25 @@ fn main() {
             if !show_reduced_depth_buffer {
                 zbuffer_drawer.draw(gl_depth_texture.id, 1., 1.);
             } else {
-                let (result_texture_id, result_tex_scale) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, max_reduce_steps);
+                let (result_texture_id, tex_scale, framebuffer_id, width, height) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, max_reduce_steps);
 
-                zbuffer_drawer.draw(result_texture_id, result_tex_scale, result_tex_scale);
+                zbuffer_drawer.draw(result_texture_id, tex_scale, tex_scale);
+
+                if width <= 8 || height <= 8 {
+                    // download data
+                    let data = reduction.download_data(framebuffer_id, width, height);
+
+                    println!("depth data {} x {}", width, height);
+                    let mut i = 0;
+                    for _y in 0..height {
+                        for _x in 0..width {
+                            print!("{}, ", data[i]);
+                            i = i + 1;
+                        }
+                        println!("");
+                    }
+                    println!("");
+                }
             }
 
             unsafe {
