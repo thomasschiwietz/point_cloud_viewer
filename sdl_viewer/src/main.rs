@@ -77,7 +77,7 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
     Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
 }
 
-fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, discard_occluded: bool, proj_matrices: &Vec<Matrix4f>)
+fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, _camera_octree: &Camera, _visible_nodes: &Vec<octree::VisibleNode>, _node_views: &mut NodeViewContainer, discard_occluded: bool, occlusion_world_to_proj_matrices: &Vec<Matrix4f>)
 {
     unsafe {
         let x = _camera_octree.width;
@@ -107,23 +107,6 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
                 //if visible_node.occluder {
                     //color = &color_table[0];
                     //draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
-
-                    // if draw_occ_frustums {
-                    //     let view_matrix_camera = &_camera.get_world_to_camera();
-
-                    //     let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, view_matrix_camera);
-
-                    //     let mx_occ_frustum = occ_projection_matrix * view_matrix_camera;
-                    //     let mx_occ_frustum_inv: Matrix4<f32> = mx_occ_frustum.inverse_transform().unwrap().into();
-                    //     let mx = mx_camera_octree * mx_occ_frustum_inv;
-
-                    //     // frustum
-                    //     _outlined_box_drawer.update_color(&color_table[5]);
-                    //     _outlined_box_drawer.update_transform(&mx);
-                    //     _outlined_box_drawer.draw();
-                    // }
-                //}
-                //else 
                 if visible_node.occluded {
                     color = &color_table[4];
                     draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
@@ -147,13 +130,11 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     _outlined_box_drawer.update_transform(&mx);
     _outlined_box_drawer.draw();
 
-    // clip frustums
-    for proj_matrix in proj_matrices {
+    // occlusion frustums
+    for occ_world_to_proj_matrix in occlusion_world_to_proj_matrices {
         let color = vec![1.,0.,1.,1.,1.];
         _outlined_box_drawer.update_color(&color);
-        let view_matrix_camera = &_camera.get_world_to_camera();
-        let mx_frustum = proj_matrix * view_matrix_camera;
-        let mx_inv_frustum:  Matrix4<f32> = mx_frustum.inverse_transform().unwrap().into();
+        let mx_inv_frustum:  Matrix4<f32> = occ_world_to_proj_matrix.inverse_transform().unwrap().into();
         let mx = mx_camera_octree * mx_inv_frustum;
         _outlined_box_drawer.update_transform(&mx);
         _outlined_box_drawer.draw();
@@ -601,7 +582,7 @@ fn main() {
         let mut current_num_screen_space_pixels = 0;
         let mut slice_count = 0;
 
-        let mut proj_matrices = Vec::new();
+        let mut occlusion_world_to_proj_matrices = Vec::new();
 
         gl_query.begin_samples_passed();
 
@@ -684,7 +665,7 @@ fn main() {
                 }
             },
             RenderMode::OcclusionQuery => {
-                proj_matrices.clear();                
+                occlusion_world_to_proj_matrices.clear();                
                 let mut query_state = false;       // render state or query state. should be an enum
                 let node_count = visible_nodes.len();
                 for i in 0..node_count {
@@ -719,8 +700,8 @@ fn main() {
 
                                 let world_to_camera_matrix = camera.get_world_to_camera();
                                 let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
-                                proj_matrices.push(occ_projection_matrix);
                                 let mx = occ_projection_matrix * world_to_camera_matrix;
+                                occlusion_world_to_proj_matrices.push(mx);
                                 let frustum = Frustum::from_matrix(&mx);
 
                                 for j in (i+1)..node_count {
@@ -766,7 +747,7 @@ fn main() {
                 }
             },
             RenderMode::ZBuffer => {
-                proj_matrices.clear();
+                occlusion_world_to_proj_matrices.clear();
                 let node_count = visible_nodes.len();
                 for i in 0..node_count {
                     if visible_nodes[i].occluded {
@@ -876,15 +857,10 @@ fn main() {
                                         let min = cuboid.min();
                                         let max = cuboid.max();
                                         if -min.z < 10000.0 {         
-                                            let proj_matrix = Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.});
-                                            
-                                            // for debug visualization
-                                            proj_matrices.push(proj_matrix);
-
-                                            // frustum clipper
+                                            let occ_proj_matrix = Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.});
                                             let world_to_camera_matrix = camera.get_world_to_camera();
-                                            let occ_projection_matrix = proj_matrix;
-                                            let mx = occ_projection_matrix * world_to_camera_matrix;
+                                            let mx = occ_proj_matrix * world_to_camera_matrix;
+                                            occlusion_world_to_proj_matrices.push(mx);
                                             let frustum = Frustum::from_matrix(&mx);
 
                                             for j in (i+1)..node_count {
@@ -984,7 +960,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, true, &proj_matrices);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &mut node_views, true, &occlusion_world_to_proj_matrices);
         }
 
         window.gl_swap_window();
