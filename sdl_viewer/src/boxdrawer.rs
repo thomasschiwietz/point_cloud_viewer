@@ -134,7 +134,6 @@ impl OutlinedBoxDrawer {
 
         unsafe {
             gl::UseProgram(self.program.id);
-            gl::Enable(gl::DEPTH_TEST);
             gl::DrawElements(gl::LINES, 24, gl::UNSIGNED_INT, ptr::null());
         }
     }
