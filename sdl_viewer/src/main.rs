@@ -742,7 +742,7 @@ fn main() {
                                         continue;
                                     }
                                     if visible_nodes[j].occluded {
-                                    continue;
+                                        continue;
                                     }
                                     if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
                                         visible_nodes[j].occluded = true;
@@ -915,7 +915,7 @@ fn main() {
                                                 if visible_nodes[j].occluded {
                                                     continue;
                                                 }
-                                                if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
+                                                if frustum.intersects(&visible_nodes[j].bounding_cube) {
                                                     visible_nodes[j].occluded = true;
                                                 }
                                             }
