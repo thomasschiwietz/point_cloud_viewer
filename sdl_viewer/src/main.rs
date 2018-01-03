@@ -585,6 +585,7 @@ fn main() {
                 octree::UseLod::Yes,
             );
             node_views.reset_load_queue();
+            camera_octree.set_pos_rot(&camera.get_pos(), Deg(0.), Deg(0.));
         } else {
             use_level_of_detail = false;
 

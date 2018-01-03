@@ -75,6 +75,10 @@ impl Camera {
         self.transform.disp = *pos;
     }
 
+    pub fn get_pos(&self) -> Vector3<f32> {
+        self.transform.disp
+    }
+
     pub fn set_size(&mut self, width: i32, height: i32) {
         self.width = width;
         self.height = height;
