@@ -749,6 +749,8 @@ fn main() {
             RenderMode::ZBuffer => {
                 occlusion_world_to_proj_matrices.clear();
                 let node_count = visible_nodes.len();
+                let mut cell_depth = Vec::new();
+                cell_depth.resize(32 * 32, 1.0);          // remove hardcoded limit!
                 for i in 0..node_count {
                     if visible_nodes[i].occluded {
                         continue;
@@ -792,6 +794,8 @@ fn main() {
 
                                 // download data
                                 let data = reduction.download_data(framebuffer_id, width, height);
+
+                                // bug: framebuffer must reset correct viewport
                                 unsafe {
                                     gl::Viewport(0, 0, camera.width, camera.height);
                                 }
@@ -804,12 +808,20 @@ fn main() {
                                 for y in 0..height {
                                     for x in 0..width {
                                         let depth = data[i];
-                                        
-                                        // why doesn't this work?
-                                        //if depth >= 1.0 {
-                                        //    continue;
-                                        //}
-                                        //println!("depth {}", depth);
+
+                                        // don't frustum cull cells that have already culled with a nearer near plane
+                                        let linear_pos = (y * width + x) as usize;
+                                        if depth > cell_depth[linear_pos] {
+                                            println!("skip: {},{}: depth {}, cell_depth {}", x,y, depth, cell_depth[linear_pos]);
+                                            // why is this never happening?
+                                            // why doesn't this work?
+                                            //if depth >= 1.0 {
+                                            //    continue;
+                                            //}
+                                            //println!("depth {}", depth);
+                                            continue;
+                                        }
+                                        cell_depth[linear_pos] = depth;
 
                                         let mut cuboid = Cuboid::new();
 
