@@ -104,16 +104,14 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
     let mx_camera_octree: Matrix4<f32> = camera_octree.get_world_to_gl();
 
     // occlusion frustums
-    //if occlusion_world_to_proj_matrices.len() < 100 {
-        for occ_world_to_proj_matrix in occlusion_world_to_proj_matrices {
-            let color = vec![1.,0.,1.,1.,1.];
-            outlined_box_drawer.update_color(&color);
-            let mx_inv_frustum:  Matrix4<f32> = occ_world_to_proj_matrix.inverse_transform().unwrap().into();
-            let mx = mx_camera_octree * mx_inv_frustum;
-            outlined_box_drawer.update_transform(&mx);
-            outlined_box_drawer.draw();
-        }
-    //}
+    for occ_world_to_proj_matrix in occlusion_world_to_proj_matrices {
+        let color = vec![1.,0.,1.,1.,1.];
+        outlined_box_drawer.update_color(&color);
+        let mx_inv_frustum:  Matrix4<f32> = occ_world_to_proj_matrix.inverse_transform().unwrap().into();
+        let mx = mx_camera_octree * mx_inv_frustum;
+        outlined_box_drawer.update_transform(&mx);
+        outlined_box_drawer.draw();
+    }
 
     // 1. render all nodes in dark gray
     for visible_node in visible_nodes {
@@ -129,8 +127,15 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
 
     // 3. render all occluded nodes
     for visible_node in visible_nodes {
-        if visible_node.occluded || visible_node.occluder {
+        if visible_node.occluded {
             draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.2,1.]); 
+        }
+    }
+
+    // 4. render all occluder nodes
+    for visible_node in visible_nodes {
+        if visible_node.occluder {
+            draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.75,1.]); 
         }
     }
 
@@ -729,7 +734,7 @@ fn main() {
                                 let world_to_camera_matrix = camera.get_world_to_camera();
                                 let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
                                 let mx = occ_projection_matrix * world_to_camera_matrix;
-                                occlusion_world_to_proj_matrices.push(mx);
+                                //occlusion_world_to_proj_matrices.push(mx);
                                 let frustum = Frustum::from_matrix(&mx);
 
                                 for j in (i+1)..node_count {
