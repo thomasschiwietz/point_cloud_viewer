@@ -102,22 +102,21 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     let mx_camera_octree: Matrix4<f32> = _camera_octree.get_world_to_gl();
     for visible_node in _visible_nodes {
         if let Some(view) = _node_views.get(&visible_node.id) {
-            let mut color = &color_table[3];//visible_node.slice as usize % color_table.len()];
+            let mut color; // = &color_table[3];//visible_node.slice as usize % color_table.len()];
             if discard_occluded {
-                //if visible_node.occluder {
-                    //color = &color_table[0];
-                    //draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
-                if visible_node.occluded {
-                    color = &color_table[4];
-                    draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);
+                if visible_node.occluder {
+                    color = &color_table[0];
+                } else if visible_node.occluded {
+                    color = &color_table[0];
+                } else if visible_node.drawn {
+                    color = &color_table[2];
                 } else {
-                    //color = &color_table[3];
-                    //draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color);           
+                    color = &color_table[3];
                 }
             } else {
                 color = &color_table[3];
-                draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color); 
             }
+            draw_outlined_box(&_outlined_box_drawer, &mx_camera_octree, view, &color); 
         }
     }
     
@@ -131,13 +130,16 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
     _outlined_box_drawer.draw();
 
     // occlusion frustums
-    for occ_world_to_proj_matrix in occlusion_world_to_proj_matrices {
-        let color = vec![1.,0.,1.,1.,1.];
-        _outlined_box_drawer.update_color(&color);
-        let mx_inv_frustum:  Matrix4<f32> = occ_world_to_proj_matrix.inverse_transform().unwrap().into();
-        let mx = mx_camera_octree * mx_inv_frustum;
-        _outlined_box_drawer.update_transform(&mx);
-        _outlined_box_drawer.draw();
+    println!("fr {}", occlusion_world_to_proj_matrices.len());
+    if occlusion_world_to_proj_matrices.len() < 100 {
+        for occ_world_to_proj_matrix in occlusion_world_to_proj_matrices {
+            let color = vec![1.,0.,1.,1.,1.];
+            _outlined_box_drawer.update_color(&color);
+            let mx_inv_frustum:  Matrix4<f32> = occ_world_to_proj_matrix.inverse_transform().unwrap().into();
+            let mx = mx_camera_octree * mx_inv_frustum;
+            _outlined_box_drawer.update_transform(&mx);
+            _outlined_box_drawer.draw();
+        }
     }
 
     unsafe {
@@ -570,6 +572,7 @@ fn main() {
 
             // clear occlusion
             for i in 0..visible_nodes.len() {
+                visible_nodes[i].drawn = false;
                 visible_nodes[i].occluder = false;
                 visible_nodes[i].occluded = false;
             } 
@@ -612,6 +615,8 @@ fn main() {
                             point_size, gamma
                         );
 
+                        visible_node.drawn = true;
+
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
                         if max_number_of_points_per_node < node_points_drawn {
@@ -640,6 +645,8 @@ fn main() {
                             },
                             point_size, gamma
                         );
+
+                        visible_node.drawn = true;
 
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
@@ -670,7 +677,7 @@ fn main() {
                 let node_count = visible_nodes.len();
                 for i in 0..node_count {
                     if visible_nodes[i].occluded {
-                    continue;
+                        continue;
                     }
 
                     if let Some(view) = node_views.get(&visible_nodes[i].id) {
@@ -688,6 +695,8 @@ fn main() {
                             },
                             point_size, gamma
                         );
+
+                        visible_nodes[i].drawn = true;
 
                         if query_state {
                             gl_query_node.end();
@@ -768,6 +777,8 @@ fn main() {
                             point_size, gamma
                         );
 
+                        visible_nodes[i].drawn = true;
+
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
                         if show_octree_nodes {
@@ -811,7 +822,7 @@ fn main() {
 
                                         // don't frustum cull cells that have already culled with a nearer near plane
                                         let linear_pos = (y * width + x) as usize;
-                                        if depth > cell_depth[linear_pos] {
+                                        if depth as f32 > cell_depth[linear_pos] as f32 {
                                             println!("skip: {},{}: depth {}, cell_depth {}", x,y, depth, cell_depth[linear_pos]);
                                             // why is this never happening?
                                             // why doesn't this work?
