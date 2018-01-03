@@ -463,8 +463,8 @@ fn main() {
     let mut show_octree_nodes = false;
     let mut show_octree_view = false;
     let mut use_level_of_detail = true;
-    let mut point_size = 2.;
-    let mut gamma = 1.;
+    let mut point_size = 1.;
+    let mut gamma = 1.5;
     let mut max_number_of_points_per_node = 0;
     let mut main_loop = || {
         for event in events.poll_iter() {
