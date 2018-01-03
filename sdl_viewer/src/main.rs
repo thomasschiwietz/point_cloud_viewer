@@ -538,9 +538,9 @@ fn main() {
                         Scancode::C => show_reduced_depth_buffer = !show_reduced_depth_buffer,
                         Scancode::V => { max_reduce_steps -= 1; max_reduce_steps = cmp::max(max_reduce_steps, 1); println!("max_reduce_steps {}", max_reduce_steps) },
                         Scancode::B => { max_reduce_steps += 1; println!("max_reduce_steps {}", max_reduce_steps) },
-                        Scancode::H => { slice_limit -= 1; slice_limit = cmp::max(slice_limit, 1); println!("slice_limit {}", slice_limit) },
                         Scancode::N => { batch_size -= 1; println!("batch_size {}", batch_size) },
                         Scancode::M => { batch_size += 1; println!("batch_size {}", batch_size) },
+                        Scancode::H => { slice_limit -= 1; slice_limit = cmp::max(slice_limit, 1); println!("slice_limit {}", slice_limit) },
                         Scancode::J => { slice_limit += 1; println!("slice_limit {}", slice_limit) },
                         _ => (), 
                     }
