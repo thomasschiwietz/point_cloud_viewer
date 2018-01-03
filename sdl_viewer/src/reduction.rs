@@ -182,13 +182,14 @@ impl Reduction {
     }
 
     pub fn download_data(&self, framebuffer_id: usize, width: i32, height: i32) -> Vec<f32> {
-        let mut data = Vec::new();
+        let mut data: Vec<f32> = Vec::new();
         data.resize((width * height) as usize, 0.);
         self.frame_buffers[framebuffer_id].bind();        
         unsafe {
             gl::ReadPixels(0, 0, width, height, gl::RED, gl::FLOAT, mem::transmute(&data[0]));
         }
-        self.frame_buffers[framebuffer_id].unbind();        
+        self.frame_buffers[framebuffer_id].unbind();
+        // framebuffer.unbind() doesn't reset the viewport correctly
 
         data
     }

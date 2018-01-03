@@ -782,7 +782,7 @@ fn main() {
             RenderMode::ZBuffer => {
                 occlusion_world_to_proj_matrices.clear();
                 let node_count = visible_nodes.len();
-                let mut cell_depth = Vec::new();
+                let mut cell_depth: Vec<f32> = Vec::new();
                 cell_depth.resize(32 * 32, 1.0);          // remove hardcoded limit!
                 for i in 0..node_count {
                     if visible_nodes[i].occluded {
@@ -915,7 +915,7 @@ fn main() {
                                                 if visible_nodes[j].occluded {
                                                     continue;
                                                 }
-                                                if frustum.intersects(&visible_nodes[j].bounding_cube) {
+                                                if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
                                                     visible_nodes[j].occluded = true;
                                                 }
                                             }
