@@ -841,17 +841,17 @@ fn main() {
                                             depth,
                                             1.));
 
-                                        proj_pos.push(Vector4f::new(
-                                            (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
-                                            (y as f32 + 1.0) / (height) as f32 * 2. -1.,
-                                            depth,
-                                            1.));
+                                        // proj_pos.push(Vector4f::new(
+                                        //     (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
+                                        //     (y as f32 + 1.0) / (height) as f32 * 2. -1.,
+                                        //     depth,
+                                        //     1.));
 
-                                        proj_pos.push(Vector4f::new(
-                                            (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
-                                            (y as f32 + 1.0) / (height) as f32 * 2. -1.,
-                                            depth,
-                                            1.));
+                                        // proj_pos.push(Vector4f::new(
+                                        //     (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
+                                        //     (y as f32 + 1.0) / (height) as f32 * 2. -1.,
+                                        //     depth,
+                                        //     1.));
 
                                         proj_pos.push(Vector4f::new(
                                             (x as f32 + 1.) / (width) as f32 * 2. - 1.,
