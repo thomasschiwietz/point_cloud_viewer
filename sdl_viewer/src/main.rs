@@ -80,7 +80,7 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
 fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, camera_octree: &Camera, visible_nodes: &Vec<octree::VisibleNode>, occlusion_world_to_proj_matrices: &Vec<Matrix4f>)
 {
     unsafe {
-        let x = camera_octree.width;
+        let x = camera.width - camera_octree.width;
         let y = 0;
         gl::Viewport(x, y, camera_octree.width, camera_octree.height);
         gl::Scissor(x, y, camera_octree.width, camera_octree.height);
@@ -491,7 +491,9 @@ fn main() {
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT, false);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
-    let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, true);
+    
+    let mut octree_view_size = 0.5;
+    let mut camera_octree = Camera::new((WINDOW_WIDTH as f32 * octree_view_size) as i32, (WINDOW_HEIGHT as f32 * octree_view_size) as i32, true);
 
     let mut gl_query = GlQuery::new();
     let mut gl_query_node = GlQuery::new();
@@ -572,7 +574,7 @@ fn main() {
                 }
                 Event::Window { win_event: WindowEvent::SizeChanged(w, h), .. } => {
                     camera.set_size(w, h);
-                    camera_octree.set_size(w / 2, h / 2);
+                    camera_octree.set_size((w as f32 * octree_view_size) as i32, (h as f32 * octree_view_size) as i32);
                     gl_depth_texture.set_size(w, h);
                     reduction.set_size(w, h);
                 }
