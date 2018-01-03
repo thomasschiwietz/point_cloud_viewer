@@ -304,7 +304,7 @@ impl GlFramebuffer {
 
     pub fn unbind(&self) {
         unsafe {
-            // reset original viewport!
+            // reset original viewport! cannot query in OpenGL ES
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
             //gl::DrawBuffer(gl::BACK);
         }

@@ -131,7 +131,7 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
 
     // occlusion frustums
     println!("fr {}", occlusion_world_to_proj_matrices.len());
-    if occlusion_world_to_proj_matrices.len() < 100 {
+    //if occlusion_world_to_proj_matrices.len() < 100 {
         for occ_world_to_proj_matrix in occlusion_world_to_proj_matrices {
             let color = vec![1.,0.,1.,1.,1.];
             _outlined_box_drawer.update_color(&color);
@@ -140,7 +140,7 @@ fn draw_octree_view(_outlined_box_drawer: &OutlinedBoxDrawer, _camera: &Camera, 
             _outlined_box_drawer.update_transform(&mx);
             _outlined_box_drawer.draw();
         }
-    }
+    //}
 
     unsafe {
         gl::Disable(gl::SCISSOR_TEST);
@@ -466,9 +466,9 @@ fn main() {
     let mut reduction = Reduction::new(WINDOW_WIDTH, WINDOW_HEIGHT);
     let mut max_reduce_steps = 1;
 
-    let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+    let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT, false);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
-    let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+    let mut camera_octree = Camera::new(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, true);
 
     let mut gl_query = GlQuery::new();
     let mut gl_query_node = GlQuery::new();

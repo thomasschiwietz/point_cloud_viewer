@@ -13,55 +13,10 @@
 // limitations under the License.
 
 use cgmath::{Angle, Decomposed, Deg, InnerSpace, Matrix4, One, Quaternion, Rad, Rotation,
-             Rotation3, Transform, Vector3, Zero};
+             Rotation3, Transform, Vector3, Zero, PerspectiveFov, Ortho};
 
 use gl;
 use std::f32;
-
-// Constructs a projection matrix. Math lifted from ThreeJS.
-fn make_projection_matrix<A: Into<Rad<f32>>>(
-    near: f32,
-    far: f32,
-    fov: A,
-    zoom: f32,
-    aspect_ratio: f32,
-) -> Matrix4<f32> {
-    let top = 0.5 * near * fov.into().tan() / zoom;
-    let height = 2. * top;
-    let width = aspect_ratio * height;
-    let left = -0.5 * width;
-
-    let right = left + width;
-    let bottom = top - height;
-
-    // Matrix is column major.
-    let x = 2. * near / (right - left);
-    let y = 2. * near / (top - bottom);
-
-    let a = (right + left) / (right - left);
-    let b = (top + bottom) / (top - bottom);
-    let c = -(far + near) / (far - near);
-    let d = -2. * far * near / (far - near);
-
-    Matrix4::new(
-        x,
-        0.,
-        0.,
-        0., // Column 0
-        0.,
-        y,
-        0.,
-        0., // Column 1
-        a,
-        b,
-        c,
-        -1., // Column 2
-        0.,
-        0.,
-        d,
-        0., // Column 3
-    )
-}
 
 #[derive(Debug)]
 pub struct Camera {
@@ -82,10 +37,11 @@ pub struct Camera {
     transform: Decomposed<Vector3<f32>, Quaternion<f32>>,
 
     projection_matrix: Matrix4<f32>,
+    ortho_projection: bool,      // perspective = false, ortho = false
 }
 
 impl Camera {
-    pub fn new(width: i32, height: i32) -> Self {
+    pub fn new(width: i32, height: i32, ortho: bool) -> Self {
         let mut camera = Camera {
             movement_speed: 1.5,
             moving_backward: false,
@@ -107,6 +63,7 @@ impl Camera {
             projection_matrix: One::one(),
             width: 0,
             height: 0,
+            ortho_projection: ortho,
         };
         camera.set_size(width, height);
         camera
@@ -121,8 +78,13 @@ impl Camera {
     pub fn set_size(&mut self, width: i32, height: i32) {
         self.width = width;
         self.height = height;
-        self.projection_matrix =
-            make_projection_matrix(0.1, 10000., Deg(45.), 1., width as f32 / height as f32);
+        let aspect = width as f32 / height as f32;
+        if !self.ortho_projection {
+            self.projection_matrix = Matrix4::from(PerspectiveFov{fovy: Rad::from(Deg(45.)), aspect: aspect, near: 0.1, far: 10000.});
+        } else {
+            let ext = 80.0;
+            self.projection_matrix = Matrix4::from(Ortho{left: -ext, right: ext, top: ext/aspect, bottom: -ext/aspect, near: 0.1, far: 10000.0});
+        }
     }
 
     pub fn get_world_to_camera(&self) -> Matrix4<f32> {
