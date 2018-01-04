@@ -762,8 +762,10 @@ fn main() {
                                 let world_to_camera_matrix = camera.get_world_to_camera();
                                 let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
                                 let mx = occ_projection_matrix * world_to_camera_matrix;
-                                occlusion_world_to_proj_matrices.push(mx);
                                 let frustum = Frustum::from_matrix(&mx);
+
+                                // add occlusion frustum to debug view
+                                //occlusion_world_to_proj_matrices.push(mx);                                
 
                                 for j in (i+1)..node_count {
                                     if visible_nodes[j].occluder {          // this should never happen
@@ -801,7 +803,7 @@ fn main() {
                                 // finish query state after one batch
                                 query_state = false;
                                 
-                                break;
+                                //break;
                             }
                         }
                     }
