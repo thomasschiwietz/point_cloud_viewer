@@ -453,6 +453,7 @@ enum RenderMode {
     Limited,
     OcclusionQuery,
     ZBuffer,
+    OcclusionQuerySkipSmallFrustums,
 }
 
 fn main() {
@@ -574,7 +575,8 @@ fn main() {
                         Scancode::Num1 => { render_mode = RenderMode::BruteForce; println!("render mode: brute force"); },
                         Scancode::Num2 => { render_mode = RenderMode::Limited; println!("render mode: limited"); },
                         Scancode::Num3 => { render_mode = RenderMode::OcclusionQuery; println!("render mode: occlusion query"); },
-                        Scancode::Num4 => { render_mode = RenderMode::ZBuffer; println!("render mode: zbuffer"); },
+                        Scancode::Num4 => { render_mode = RenderMode::OcclusionQuerySkipSmallFrustums; println!("render mode: occlusion query: skip small frustums"); },
+                        Scancode::Num5 => { render_mode = RenderMode::ZBuffer; println!("render mode: zbuffer"); },
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
@@ -854,7 +856,7 @@ fn main() {
                             let color_intensity = 1.;
                             let color = vec![color_intensity,color_intensity,0.,1.];
                             draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-        }
+                        }
                         current_num_screen_space_pixels += node_points_drawn;
 
                         if current_num_screen_space_pixels >= num_screen_space_pixels {
@@ -970,6 +972,101 @@ fn main() {
                                     }
                                 }
 
+                                //break;
+                            }
+                        }
+                    }
+                }
+            },
+            RenderMode::OcclusionQuerySkipSmallFrustums => {
+                let mut max_edge_length = 0.;
+                let mut min_edge_length = 10000000.;
+                for visible_node in &visible_nodes {
+                    let e = visible_node.bounding_cube.edge_length();
+                    if e < min_edge_length { min_edge_length = e; }
+                    if e > max_edge_length { max_edge_length = e; }
+                }
+                //println!("min/max {} x {}", min_edge_length, max_edge_length);
+
+                occlusion_world_to_proj_matrices.clear();                
+                let mut query_state = false;       // render state or query state. should be an enum
+                let node_count = visible_nodes.len();
+                for i in 0..node_count {
+                    if visible_nodes[i].occluded {
+                        continue;
+                    }
+
+                    if let Some(view) = node_views.get(&visible_nodes[i].id) {
+
+                        if query_state && visible_nodes[i].bounding_cube.edge_length() >= 3. * min_edge_length {
+                            gl_query_node.begin_samples_passed();   
+                        }
+
+                        let node_points_drawn = node_drawer.draw(
+                            view,
+                            if use_level_of_detail {
+                                visible_nodes[i].level_of_detail
+                            } else {
+                                1
+                            },
+                            point_size, gamma
+                        );
+
+                        visible_nodes[i].drawn = true;
+
+                        if query_state && visible_nodes[i].bounding_cube.edge_length() >= 3. * min_edge_length {
+                            gl_query_node.end();
+                            let samples_passed = gl_query_node.query_samples_passed();
+
+                            let pass_ratio = samples_passed as f32 / node_points_drawn as f32;
+                            if pass_ratio < 0.001 {
+
+                                visible_nodes[i].occluder = true;
+
+                                let world_to_camera_matrix = camera.get_world_to_camera();
+                                let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
+                                let mx = occ_projection_matrix * world_to_camera_matrix;
+                                let frustum = Frustum::from_matrix(&mx);
+
+                                // add occlusion frustum to debug view
+                                //occlusion_world_to_proj_matrices.push(mx);                                
+
+                                for j in (i+1)..node_count {
+                                    if visible_nodes[j].occluder {          // this should never happen
+                                        continue;
+                                    }
+                                    if visible_nodes[j].occluded {
+                                        continue;
+                                    }
+                                    if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
+                                        visible_nodes[j].occluded = true;
+                                    }
+                                }
+                            }
+                            num_queries += 1;
+                        }
+
+                        num_points_drawn += node_points_drawn;
+                        num_nodes_drawn += 1;
+                        if show_octree_nodes {
+                            let color_intensity = 1.;
+                            let color = vec![color_intensity,color_intensity,0.,1.];
+                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
+                        }
+                        current_num_screen_space_pixels += node_points_drawn;
+
+                        if current_num_screen_space_pixels >= num_screen_space_pixels {
+                            current_batch += 1;
+                            current_num_screen_space_pixels = 0;
+
+                            if !query_state {
+                                if current_batch >= batch_size {
+                                    query_state = true;
+                                }
+                            } else {
+                                // finish query state after one batch
+                                query_state = false;
+                                
                                 //break;
                             }
                         }
