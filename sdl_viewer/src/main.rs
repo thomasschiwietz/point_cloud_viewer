@@ -533,6 +533,8 @@ fn main() {
     let mut show_reduced_depth_buffer = false;
     let mut gl_depth_texture = GlTexture::new(camera.width, camera.height, TextureType::Depth);
 
+    let mut shift_pressed = false;
+
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
     let mut last_log = time::PreciseTime::now();
@@ -558,7 +560,17 @@ fn main() {
                         Scancode::Q => camera.moving_up = true,
                         Scancode::F => force_load_all = true,
                         Scancode::O => show_octree_nodes = !show_octree_nodes,
-                        Scancode::P => show_octree_view = !show_octree_view,
+                        Scancode::P => { 
+                            show_octree_view = !show_octree_view; 
+                            if show_octree_view {
+                                if shift_pressed {
+                                    octree_view_size = 1.0;
+                                } else { 
+                                    octree_view_size = 0.5; 
+                                }
+                                camera_octree.set_size((camera.width as f32 * octree_view_size) as i32, (camera.height as f32 * octree_view_size) as i32);
+                            }
+                        },
                         Scancode::Num1 => { render_mode = RenderMode::BruteForce; println!("render mode: brute force"); },
                         Scancode::Num2 => { render_mode = RenderMode::Limited; println!("render mode: limited"); },
                         Scancode::Num3 => { render_mode = RenderMode::OcclusionQuery; println!("render mode: occlusion query"); },
@@ -575,6 +587,7 @@ fn main() {
                         Scancode::M => { batch_size += 1; println!("batch_size {}", batch_size) },
                         Scancode::H => { slice_limit -= 1; slice_limit = cmp::max(slice_limit, 1); println!("slice_limit {}", slice_limit) },
                         Scancode::J => { slice_limit += 1; println!("slice_limit {}", slice_limit) },
+                        Scancode::LShift => shift_pressed = true,
                         _ => (), 
                     }
                 }
@@ -586,6 +599,7 @@ fn main() {
                         Scancode::D => camera.moving_right = false,
                         Scancode::Z => camera.moving_down = false,
                         Scancode::Q => camera.moving_up = false,
+                        Scancode::LShift => shift_pressed = false,
                         _ => (),
                     }
                 }
