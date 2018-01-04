@@ -79,6 +79,14 @@ impl Camera {
         self.transform.disp
     }
 
+    pub fn get_theta(&self) -> Rad<f32> {
+        self.theta
+    }
+
+    pub fn get_phi(&self) -> Rad<f32> {
+        self.phi
+    }
+
     pub fn set_size(&mut self, width: i32, height: i32) {
         self.width = width;
         self.height = height;
@@ -87,7 +95,7 @@ impl Camera {
             self.projection_matrix = Matrix4::from(PerspectiveFov{fovy: Rad::from(Deg(45.)), aspect: aspect, near: 0.1, far: 10000.});
         } else {
             let ext = 80.0;
-            self.projection_matrix = Matrix4::from(Ortho{left: -ext, right: ext, top: ext/aspect, bottom: -ext/aspect, near: 0.1, far: 10000.0});
+            self.projection_matrix = Matrix4::from(Ortho{left: -ext, right: ext, top: 2. * ext/aspect, bottom: 0., near: 0.1, far: 10000.0});
         }
     }
 

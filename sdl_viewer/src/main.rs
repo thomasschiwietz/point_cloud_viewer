@@ -118,18 +118,30 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
         gl::Disable(gl::DEPTH_TEST);
     }
 
-    let color_table = [
-        vec![1.,0.,0.,1.],
-        vec![0.,1.,0.,1.],
-        vec![0.,0.,1.,1.],
-        vec![1.,1.,0.,1.],
-        vec![0.,1.,1.,1.],
-        vec![1.,0.,1.,1.],
-        ];
+    // let color_table = [
+    //     vec![1.,0.,0.,1.],
+    //     vec![0.,1.,0.,1.],
+    //     vec![0.,0.,1.,1.],
+    //     vec![1.,1.,0.,1.],
+    //     vec![0.,1.,1.,1.],
+    //     vec![1.,0.,1.,1.],
+    // ];
 
     let mx_camera_octree: Matrix4<f32> = camera_octree.get_world_to_gl();
 
-    // occlusion frustums
+    // 1. render all nodes in dark gray
+    for visible_node in visible_nodes {
+        draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.2,0.2,1.]); 
+    }
+
+    // 2. render all drawn nodes in green
+    for visible_node in visible_nodes {
+        if visible_node.drawn {
+            draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.75,0.2,1.]);
+        }
+    }
+
+    // 3. occlusion frustums
     for occ_world_to_proj_matrix in occlusion_world_to_proj_matrices {
         let color = vec![1.,0.,1.,1.,1.];
         outlined_box_drawer.update_color(&color);
@@ -139,26 +151,14 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
         outlined_box_drawer.draw();
     }
 
-    // 1. render all nodes in dark gray
-    for visible_node in visible_nodes {
-        draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.2,0.2,1.]); 
-    }
-
-    // 2. render all drawn nodes in green gray
-    for visible_node in visible_nodes {
-        if visible_node.drawn {
-            draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.75,0.2,1.]);
-        }
-    }
-
-    // 3. render all occluded nodes
+    // 4. render all occluded nodes
     for visible_node in visible_nodes {
         if visible_node.occluded {
             draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.2,1.]); 
         }
     }
 
-    // 4. render all occluder nodes
+    // 5. render all occluder nodes
     for visible_node in visible_nodes {
         if visible_node.occluder {
             draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.75,1.]); 
@@ -518,7 +518,7 @@ fn main() {
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT, false);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
 
-    let mut octree_view_size = 1.0;
+    let mut octree_view_size = 0.5;
     let mut camera_octree = Camera::new((WINDOW_WIDTH as f32 * octree_view_size) as i32, (WINDOW_HEIGHT as f32 * octree_view_size) as i32, true);
 
     let mut gl_query = GlQuery::new();
@@ -618,7 +618,8 @@ fn main() {
                 octree::UseLod::Yes,
             );
             node_views.reset_load_queue();
-            camera_octree.set_pos_rot(&camera.get_pos(), Deg(0.), Deg(0.));
+            camera_octree.set_pos_rot(&camera.get_pos(), Deg::from(camera.get_theta()), Deg(0.));
+            camera_octree.update();
         } else {
             use_level_of_detail = false;
 
