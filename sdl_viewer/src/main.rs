@@ -24,7 +24,7 @@ extern crate clap;
 use cgmath::{Array, Matrix, Matrix4, Vector3, Perspective};
 use cgmath::{Angle, Decomposed, Deg, InnerSpace, One, Quaternion, Rad, Rotation,
              Rotation3, Transform, Zero};
-use point_viewer::math::{Cuboid, CuboidLike, Cube, Frustum, Vector4f, Vector3f, Matrix4f};
+use point_viewer::math::{Cuboid, CuboidLike, Cube, Frustum, Vector2f, Vector3f, Vector4f, Matrix4f};
 use point_viewer::octree;
 use rand::{Rng, thread_rng};
 use sdl2::event::{Event, WindowEvent};
@@ -74,7 +74,33 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
     // compute perspective matrix
     let min = bounding_box.min();
     let max = bounding_box.max();
-    Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.})
+
+    // The OpenGL coordinate system z-axis has a negative sign from the camera point in the viewing direction.
+    // min.z/max.z must be flipped as parameters for near/far in the projection matrix
+    // The near and far plane enclosing the box are in [-max.z;-min.z]
+    // Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -max.z, far: 10000.})    
+
+    // We set the near plane of the frustum to the back plane of the box at -min.z
+    // The left/right/top/bottom planes must be adapted to account for the perspective
+
+    let z_ratio = min.z / max.z;
+    let min_xy_at_min_z = Vector2f::new(
+        min.x * z_ratio,
+        min.y * z_ratio,
+    );
+    let max_xy_at_min_z = Vector2f::new(
+        max.x * z_ratio,
+        max.y * z_ratio,
+    );
+
+    let mut min_xy_frustum = min_xy_at_min_z;
+    let mut max_xy_frustum = max_xy_at_min_z;
+    if min.x < min_xy_frustum.x { min_xy_frustum.x = min.x; }
+    if min.y < min_xy_frustum.y { min_xy_frustum.y = min.y; }
+    if max.x > max_xy_frustum.x { max_xy_frustum.x = max.x; }
+    if max.y > max_xy_frustum.y { max_xy_frustum.y = max.y; }
+
+    Matrix4::from(Perspective{left: min_xy_frustum.x, right: max_xy_frustum.x, bottom: min_xy_frustum.y, top: max_xy_frustum.y, near: -min.z, far: 10000.})
 }
 
 fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, camera_octree: &Camera, visible_nodes: &Vec<octree::VisibleNode>, occlusion_world_to_proj_matrices: &Vec<Matrix4f>)
@@ -491,8 +517,8 @@ fn main() {
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT, false);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
-    
-    let mut octree_view_size = 0.5;
+
+    let mut octree_view_size = 1.0;
     let mut camera_octree = Camera::new((WINDOW_WIDTH as f32 * octree_view_size) as i32, (WINDOW_HEIGHT as f32 * octree_view_size) as i32, true);
 
     let mut gl_query = GlQuery::new();
@@ -736,7 +762,7 @@ fn main() {
                                 let world_to_camera_matrix = camera.get_world_to_camera();
                                 let occ_projection_matrix = get_occlusion_projection_matrix(&view.meta.bounding_cube, &world_to_camera_matrix);
                                 let mx = occ_projection_matrix * world_to_camera_matrix;
-                                //occlusion_world_to_proj_matrices.push(mx);
+                                occlusion_world_to_proj_matrices.push(mx);
                                 let frustum = Frustum::from_matrix(&mx);
 
                                 for j in (i+1)..node_count {
@@ -775,7 +801,7 @@ fn main() {
                                 // finish query state after one batch
                                 query_state = false;
                                 
-                                //break;
+                                break;
                             }
                         }
                     }
