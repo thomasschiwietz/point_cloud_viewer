@@ -131,13 +131,13 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
 
     // 1. render all nodes in dark gray
     for visible_node in visible_nodes {
-        draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.2,0.2,1.]); 
+        draw_outlined_box(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.2,0.2,1.]); 
     }
 
     // 2. render all drawn nodes in green
     for visible_node in visible_nodes {
         if visible_node.drawn {
-            draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.75,0.2,1.]);
+            draw_outlined_box(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.75,0.2,1.]);
         }
     }
 
@@ -154,14 +154,14 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
     // 4. render all occluded nodes
     for visible_node in visible_nodes {
         if visible_node.occluded {
-            draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.2,1.]); 
+            draw_outlined_box(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.2,1.]); 
         }
     }
 
     // 5. render all occluder nodes
     for visible_node in visible_nodes {
         if visible_node.occluder {
-            draw_outlined_box_from_cube(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.75,1.]); 
+            draw_outlined_box(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.75,1.]); 
         }
     }
 
@@ -182,33 +182,13 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
     }
 }
 
-fn draw_outlined_box_from_cube(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_matrix: &Matrix4<f32>, cube: &Cube, color: &Vec<f32>)
+fn draw_outlined_box(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_matrix: &Matrix4<f32>, cube: &Cube, color: &Vec<f32>)
 {
     // create scale matrix   
     let mx_scale = Matrix4::from_scale(cube.edge_length() / 2.);
     
     // create translation matrix
     let mx_translation = Matrix4::from_translation(cube.center());
-    
-    let mx = projection_view_matrix * mx_translation * mx_scale;
-    outlined_box_drawer.update_transform(&mx);
-
-    outlined_box_drawer.update_color(&color);
-
-    outlined_box_drawer.draw();
-}
-
-fn draw_outlined_box(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_matrix: &Matrix4<f32>, node_view: &NodeView, color: &Vec<f32>)
-{
-    let half_edge_length = node_view.meta.bounding_cube.edge_length() / 2.0;
-    let min_cube_pos = node_view.meta.bounding_cube.min();
-
-    // create scale matrix   
-    let mx_scale = Matrix4::from_scale(half_edge_length);
-    
-    // create translation matrix
-    let half_edge_vector = Vector3::new(half_edge_length,half_edge_length,half_edge_length);
-    let mx_translation = Matrix4::from_translation(min_cube_pos + half_edge_vector);
     
     let mx = projection_view_matrix * mx_translation * mx_scale;
     outlined_box_drawer.update_transform(&mx);
@@ -545,7 +525,6 @@ fn main() {
     let mut use_level_of_detail = true;
     let mut point_size = 1.;
     let mut gamma = 1.3;
-    let mut max_number_of_points_per_node = 0;
     let mut main_loop = || {
         for event in events.poll_iter() {
             match event {
@@ -688,14 +667,6 @@ fn main() {
 
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
-                        if max_number_of_points_per_node < node_points_drawn {
-                            max_number_of_points_per_node = node_points_drawn;
-                        }
-                        if show_octree_nodes {
-                            let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
-                            let color = vec![color_intensity,color_intensity,0.,1.];
-                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                        }
                     }
                 }
             },
@@ -719,14 +690,6 @@ fn main() {
 
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
-                        if max_number_of_points_per_node < node_points_drawn {
-                            max_number_of_points_per_node = node_points_drawn;
-                        }
-                        if show_octree_nodes {
-                            let color_intensity = num_points_drawn as f32 / max_number_of_points_per_node as f32;
-                            let color = vec![color_intensity,color_intensity,0.,1.];
-                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                        }
                         current_num_screen_space_pixels += node_points_drawn;
 
                         if current_num_screen_space_pixels >= num_screen_space_pixels {
@@ -801,11 +764,6 @@ fn main() {
 
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
-                        if show_octree_nodes {
-                            let color_intensity = 1.;
-                            let color = vec![color_intensity,color_intensity,0.,1.];
-                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                        }
                         current_num_screen_space_pixels += node_points_drawn;
 
                         if current_num_screen_space_pixels >= num_screen_space_pixels {
@@ -852,11 +810,6 @@ fn main() {
 
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
-                        if show_octree_nodes {
-                            let color_intensity = 1.;
-                            let color = vec![color_intensity,color_intensity,0.,1.];
-                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                        }
                         current_num_screen_space_pixels += node_points_drawn;
 
                         if current_num_screen_space_pixels >= num_screen_space_pixels {
@@ -1048,11 +1001,6 @@ fn main() {
 
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
-                        if show_octree_nodes {
-                            let color_intensity = 1.;
-                            let color = vec![color_intensity,color_intensity,0.,1.];
-                            draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), view, &color);
-                        }
                         current_num_screen_space_pixels += node_points_drawn;
 
                         if current_num_screen_space_pixels >= num_screen_space_pixels {
@@ -1073,6 +1021,16 @@ fn main() {
                     }
                 }
             },
+        }
+
+        gl_query.end();
+
+        if show_octree_nodes {
+            for v in &visible_nodes {
+                let color_intensity = 1.;
+                let color = vec![color_intensity,color_intensity,0.,1.];
+                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), &v.bounding_cube, &color);
+            }
         }
 
         if show_depth_buffer {
@@ -1134,8 +1092,6 @@ fn main() {
                 gl::BindTexture(gl::TEXTURE_2D, 0);
             }
         }
-
-        gl_query.end();
 
         if force_load_all {
             println!("Force loading all currently visible nodes.");
