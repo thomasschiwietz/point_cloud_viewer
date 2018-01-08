@@ -26,7 +26,7 @@ const VERTEX_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/outlin
 
 pub struct BoxDrawer
 {
-    program: GlProgram,
+    outlines_program: GlProgram,
 
     // Uniforms locations.
     u_transform: GLint,
@@ -40,14 +40,14 @@ pub struct BoxDrawer
 
 impl BoxDrawer {
     pub fn new() -> Self {
-        let program = GlProgram::new(VERTEX_SHADER_OUTLINED_BOX, FRAGMENT_SHADER_OUTLINED_BOX);  
+        let outlines_program = GlProgram::new(VERTEX_SHADER_OUTLINED_BOX, FRAGMENT_SHADER_OUTLINED_BOX);  
         let u_transform;
         let u_color;
     
         unsafe {
-            gl::UseProgram(program.id);
-            u_transform = gl::GetUniformLocation(program.id, c_str!("transform"));
-            u_color = gl::GetUniformLocation(program.id, c_str!("color"));
+            gl::UseProgram(outlines_program.id);
+            u_transform = gl::GetUniformLocation(outlines_program.id, c_str!("transform"));
+            u_color = gl::GetUniformLocation(outlines_program.id, c_str!("color"));
         }
 
         let vertex_array = GlVertexArray::new();
@@ -94,7 +94,7 @@ impl BoxDrawer {
         }
 
         unsafe{
-            let pos_attr = gl::GetAttribLocation(program.id, c_str!("aPos"));
+            let pos_attr = gl::GetAttribLocation(outlines_program.id, c_str!("aPos"));
             gl::EnableVertexAttribArray(pos_attr as GLuint);
             gl::VertexAttribPointer(
                 pos_attr as GLuint,
@@ -106,7 +106,7 @@ impl BoxDrawer {
             );
         }
         BoxDrawer {
-            program,
+            outlines_program,
             u_transform,
             u_color,
             vertex_array,
@@ -117,14 +117,14 @@ impl BoxDrawer {
 
     pub fn update_transform(&self, matrix: &Matrix4<f32>) {
         unsafe {
-            gl::UseProgram(self.program.id);
+            gl::UseProgram(self.outlines_program.id);
             gl::UniformMatrix4fv(self.u_transform, 1, false as GLboolean, matrix.as_ptr());
         }
     }
 
     pub fn update_color(&self, color: &Vec<f32>) {
         unsafe {
-            gl::UseProgram(self.program.id);
+            gl::UseProgram(self.outlines_program.id);
             gl::Uniform4fv(self.u_color, 1, color.as_ptr());
         }
     }
@@ -133,7 +133,7 @@ impl BoxDrawer {
         self.vertex_array.bind();
 
         unsafe {
-            gl::UseProgram(self.program.id);
+            gl::UseProgram(self.outlines_program.id);
             gl::DrawElements(gl::LINES, 24, gl::UNSIGNED_INT, ptr::null());
         }
     }
