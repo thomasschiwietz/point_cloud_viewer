@@ -29,33 +29,33 @@ pub struct BoxDrawer
     outlines_program: GlProgram,
 
     // Uniforms locations.
-    u_transform: GLint,
-    u_color: GLint,
+    outlines_u_transform: GLint,
+    outlines_u_color: GLint,
 
     // vertex array and buffers
-    vertex_array: GlVertexArray,
-    _buffer_position: GlBuffer,
-    _buffer_indices: GlBuffer,
+    outlines_vertex_array: GlVertexArray,
+    _outlines_buffer_position: GlBuffer,
+    _outlines_buffer_indices: GlBuffer,
 }
 
 impl BoxDrawer {
     pub fn new() -> Self {
         let outlines_program = GlProgram::new(VERTEX_SHADER_OUTLINED_BOX, FRAGMENT_SHADER_OUTLINED_BOX);  
-        let u_transform;
-        let u_color;
+        let outlines_u_transform;
+        let outlines_u_color;
     
         unsafe {
             gl::UseProgram(outlines_program.id);
-            u_transform = gl::GetUniformLocation(outlines_program.id, c_str!("transform"));
-            u_color = gl::GetUniformLocation(outlines_program.id, c_str!("color"));
+            outlines_u_transform = gl::GetUniformLocation(outlines_program.id, c_str!("transform"));
+            outlines_u_color = gl::GetUniformLocation(outlines_program.id, c_str!("color"));
         }
 
-        let vertex_array = GlVertexArray::new();
-        vertex_array.bind();
+        let outlines_vertex_array = GlVertexArray::new();
+        outlines_vertex_array.bind();
 
         // vertex buffer: define 8 vertices of the box
-        let _buffer_position = GlBuffer::new();
-        _buffer_position.bind(gl::ARRAY_BUFFER);
+        let _outlines_buffer_position = GlBuffer::new();
+        _outlines_buffer_position.bind(gl::ARRAY_BUFFER);
         let vertices: [f32; 3*8] = [
             -1.0, -1.0, 1.0,
             1.0, -1.0, 1.0,
@@ -76,8 +76,8 @@ impl BoxDrawer {
         }
 
         // define index buffer for 24 edges of the box
-        let _buffer_indices = GlBuffer::new();
-        _buffer_indices.bind(gl::ELEMENT_ARRAY_BUFFER);
+        let _outlines_buffer_indices = GlBuffer::new();
+        _outlines_buffer_indices.bind(gl::ELEMENT_ARRAY_BUFFER);
         let indices: [i32; 24] = [
             0,1, 1,2, 2,3, 3,0,		// front
 		    4,5, 5,6, 6,7, 7,4,		// back
@@ -107,30 +107,30 @@ impl BoxDrawer {
         }
         BoxDrawer {
             outlines_program,
-            u_transform,
-            u_color,
-            vertex_array,
-            _buffer_position,
-            _buffer_indices
+            outlines_u_transform,
+            outlines_u_color,
+            outlines_vertex_array,
+            _outlines_buffer_position,
+            _outlines_buffer_indices
         }        
     }
 
     pub fn update_transform(&self, matrix: &Matrix4<f32>) {
         unsafe {
             gl::UseProgram(self.outlines_program.id);
-            gl::UniformMatrix4fv(self.u_transform, 1, false as GLboolean, matrix.as_ptr());
+            gl::UniformMatrix4fv(self.outlines_u_transform, 1, false as GLboolean, matrix.as_ptr());
         }
     }
 
     pub fn update_color(&self, color: &Vec<f32>) {
         unsafe {
             gl::UseProgram(self.outlines_program.id);
-            gl::Uniform4fv(self.u_color, 1, color.as_ptr());
+            gl::Uniform4fv(self.outlines_u_color, 1, color.as_ptr());
         }
     }
 
     pub fn draw_outlines(&self) {
-        self.vertex_array.bind();
+        self.outlines_vertex_array.bind();
 
         unsafe {
             gl::UseProgram(self.outlines_program.id);
