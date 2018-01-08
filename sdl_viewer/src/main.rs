@@ -116,6 +116,9 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
         gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
         gl::Disable(gl::DEPTH_TEST);
+
+        //gl::Enable(gl::LINE_SMOOTH);
+        //gl::LineWidth(0.5);
     }
 
     // let color_table = [
@@ -175,6 +178,9 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
     outlined_box_drawer.draw();
 
     unsafe {
+        //gl::LineWidth(1.0);
+        //gl::Disable(gl::LINE_SMOOTH);    
+
         gl::Enable(gl::DEPTH_TEST);        
         gl::Disable(gl::SCISSOR_TEST);
         gl::Scissor(0, 0, camera.width, camera.height);
