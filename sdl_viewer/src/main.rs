@@ -103,7 +103,7 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
     Matrix4::from(Perspective{left: min_xy_frustum.x, right: max_xy_frustum.x, bottom: min_xy_frustum.y, top: max_xy_frustum.y, near: -min.z, far: 10000.})
 }
 
-fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, camera_octree: &Camera, visible_nodes: &Vec<octree::VisibleNode>, occlusion_world_to_proj_matrices: &Vec<Matrix4f>)
+fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, camera_octree: &Camera, visible_nodes: &Vec<octree::VisibleNode>, occlusion_world_to_proj_matrices: &Vec<Matrix4f>, node_views: &mut NodeViewContainer, node_drawer: &NodeDrawer)
 {
     unsafe {
         let x = camera.width - camera_octree.width;
@@ -135,6 +135,20 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
 
     // frustum is fixed
     // mx_camera_octree = camera_octree.get_projection_matrix() * Matrix4f::from_angle_x(Rad::from(Deg(90.))) * camera.get_world_to_camera();
+
+    // 0. render all nodes
+    node_drawer.update_world_to_gl(&mx_camera_octree);
+    for visible_node in visible_nodes {
+        if visible_node.drawn {
+            if let Some(view) = node_views.get(&visible_node.id) {
+                node_drawer.draw(view, 1, 1.0, 1.3);
+            }
+        }
+    }
+    node_drawer.update_world_to_gl(&camera.get_world_to_gl());
+    unsafe {
+        gl::Disable(gl::DEPTH_TEST);        
+    }
 
     // 1. render all nodes in dark gray
     for visible_node in visible_nodes {
@@ -1115,7 +1129,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &occlusion_world_to_proj_matrices);
+            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &occlusion_world_to_proj_matrices, &mut node_views, &node_drawer);
         }
 
         window.gl_swap_window();
