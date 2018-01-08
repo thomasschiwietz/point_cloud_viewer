@@ -24,7 +24,7 @@ use cgmath::{Array, Matrix, Matrix4};
 const FRAGMENT_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/outlinedBox.fs");
 const VERTEX_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/outlinedBox.vs");
 
-pub struct OutlinedBoxDrawer
+pub struct BoxDrawer
 {
     program: GlProgram,
 
@@ -38,7 +38,7 @@ pub struct OutlinedBoxDrawer
     _buffer_indices: GlBuffer,
 }
 
-impl OutlinedBoxDrawer {
+impl BoxDrawer {
     pub fn new() -> Self {
         let program = GlProgram::new(VERTEX_SHADER_OUTLINED_BOX, FRAGMENT_SHADER_OUTLINED_BOX);  
         let u_transform;
@@ -105,7 +105,7 @@ impl OutlinedBoxDrawer {
                 ptr::null(),
             );
         }
-        OutlinedBoxDrawer {
+        BoxDrawer {
             program,
             u_transform,
             u_color,
@@ -129,7 +129,7 @@ impl OutlinedBoxDrawer {
         }
     }
 
-    pub fn draw(&self) {
+    pub fn draw_outlines(&self) {
         self.vertex_array.bind();
 
         unsafe {

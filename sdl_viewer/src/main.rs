@@ -31,7 +31,7 @@ use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Scancode;
 use sdl2::video::GLProfile;
 use sdl_viewer::{Camera, gl};
-use sdl_viewer::boxdrawer::OutlinedBoxDrawer;
+use sdl_viewer::boxdrawer::BoxDrawer;
 use sdl_viewer::zbuffer_drawer::ZBufferDrawer;
 use sdl_viewer::reduction::Reduction;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
@@ -103,7 +103,7 @@ fn get_occlusion_projection_matrix(cube: &CuboidLike, view_matrix_camera: &Matri
     Matrix4::from(Perspective{left: min_xy_frustum.x, right: max_xy_frustum.x, bottom: min_xy_frustum.y, top: max_xy_frustum.y, near: -min.z, far: 10000.})
 }
 
-fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, camera_octree: &Camera, visible_nodes: &Vec<octree::VisibleNode>, occlusion_world_to_proj_matrices: &Vec<Matrix4f>, node_views: &mut NodeViewContainer, node_drawer: &NodeDrawer)
+fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Camera, visible_nodes: &Vec<octree::VisibleNode>, occlusion_world_to_proj_matrices: &Vec<Matrix4f>, node_views: &mut NodeViewContainer, node_drawer: &NodeDrawer)
 {
     unsafe {
         let x = camera.width - camera_octree.width;
@@ -152,48 +152,48 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
 
     // 1. render all nodes in dark gray
     for visible_node in visible_nodes {
-        draw_outlined_box(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.2,0.2,1.]); 
+        draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.2,0.2,1.]); 
     }
 
     // 2. render all drawn nodes in green
     for visible_node in visible_nodes {
         if visible_node.drawn {
-            draw_outlined_box(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.75,0.2,1.]);
+            draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.75,0.2,1.]);
         }
     }
 
     // 3. occlusion frustums
     for occ_world_to_proj_matrix in occlusion_world_to_proj_matrices {
         let color = vec![1.,0.,1.,1.,1.];
-        outlined_box_drawer.update_color(&color);
+        box_drawer.update_color(&color);
         let mx_inv_frustum:  Matrix4<f32> = occ_world_to_proj_matrix.inverse_transform().unwrap().into();
         let mx = mx_camera_octree * mx_inv_frustum;
-        outlined_box_drawer.update_transform(&mx);
-        outlined_box_drawer.draw();
+        box_drawer.update_transform(&mx);
+        box_drawer.draw_outlines();
     }
 
     // 4. render all occluded nodes
     for visible_node in visible_nodes {
         if visible_node.occluded {
-            draw_outlined_box(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.2,1.]); 
+            draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.2,1.]); 
         }
     }
 
     // 5. render all occluder nodes
     for visible_node in visible_nodes {
         if visible_node.occluder {
-            draw_outlined_box(&outlined_box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.75,1.]); 
+            draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.75,1.]); 
         }
     }
 
     // viewing frustum
     let color = vec![1.,1.,1.,1.];
-    outlined_box_drawer.update_color(&color);
+    box_drawer.update_color(&color);
     let mx_camera:  Matrix4<f32> = camera.get_world_to_gl();
     let mx_inv_camera:  Matrix4<f32> = mx_camera.inverse_transform().unwrap().into();
     let mx = mx_camera_octree * mx_inv_camera;
-    outlined_box_drawer.update_transform(&mx);
-    outlined_box_drawer.draw();
+    box_drawer.update_transform(&mx);
+    box_drawer.draw_outlines();
 
     unsafe {
         //gl::LineWidth(1.0);
@@ -206,7 +206,7 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
     }
 }
 
-fn draw_outlined_box(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_matrix: &Matrix4<f32>, cube: &Cube, color: &Vec<f32>)
+fn draw_outlined_box(box_drawer: &BoxDrawer, projection_view_matrix: &Matrix4<f32>, cube: &Cube, color: &Vec<f32>)
 {
     // create scale matrix   
     let mx_scale = Matrix4::from_scale(cube.edge_length() / 2.);
@@ -215,11 +215,11 @@ fn draw_outlined_box(outlined_box_drawer: &OutlinedBoxDrawer, projection_view_ma
     let mx_translation = Matrix4::from_translation(cube.center());
     
     let mx = projection_view_matrix * mx_translation * mx_scale;
-    outlined_box_drawer.update_transform(&mx);
+    box_drawer.update_transform(&mx);
 
-    outlined_box_drawer.update_color(&color);
+    box_drawer.update_color(&color);
 
-    outlined_box_drawer.draw();
+    box_drawer.draw_outlines();
 }
 
 fn reshuffle(new_order: &[usize], old_data: Vec<u8>, bytes_per_vertex: usize) -> Vec<u8> {
@@ -515,7 +515,7 @@ fn main() {
     let mut node_views = NodeViewContainer::new();
     let mut visible_nodes = Vec::new();
 
-    let outlined_box_drawer = OutlinedBoxDrawer::new();
+    let box_drawer = BoxDrawer::new();
     let zbuffer_drawer = ZBufferDrawer::new();
     let mut reduction = Reduction::new(WINDOW_WIDTH, WINDOW_HEIGHT);
     let mut max_reduce_steps = 1;
@@ -1053,7 +1053,7 @@ fn main() {
             for v in &visible_nodes {
                 let color_intensity = 1.;
                 let color = vec![color_intensity,color_intensity,0.,1.];
-                draw_outlined_box(&outlined_box_drawer, &camera.get_world_to_gl(), &v.bounding_cube, &color);
+                draw_outlined_box(&box_drawer, &camera.get_world_to_gl(), &v.bounding_cube, &color);
             }
         }
 
@@ -1129,7 +1129,7 @@ fn main() {
         }
 
         if show_octree_view {
-            draw_octree_view(&outlined_box_drawer, &camera, &camera_octree, &visible_nodes, &occlusion_world_to_proj_matrices, &mut node_views, &node_drawer);
+            draw_octree_view(&box_drawer, &camera, &camera_octree, &visible_nodes, &occlusion_world_to_proj_matrices, &mut node_views, &node_drawer);
         }
 
         window.gl_swap_window();
