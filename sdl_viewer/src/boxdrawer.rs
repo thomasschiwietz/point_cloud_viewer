@@ -26,16 +26,17 @@ const VERTEX_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/outlin
 
 pub struct BoxDrawer
 {
+    // outlines program, buffer, uniform locations
     outlines_program: GlProgram,
-
-    // Uniforms locations.
     outlines_u_transform: GLint,
     outlines_u_color: GLint,
-
-    // vertex array and buffers
     outlines_vertex_array: GlVertexArray,
     _outlines_buffer_position: GlBuffer,
     _outlines_buffer_indices: GlBuffer,
+
+    // filled program, buffer, uniform locations
+    filled_vertex_array: GlVertexArray,
+    _filled_buffer_position: GlBuffer,
 }
 
 impl BoxDrawer {
@@ -105,13 +106,63 @@ impl BoxDrawer {
                 ptr::null(),
             );
         }
+
+        let filled_vertex_array = GlVertexArray::new();
+        filled_vertex_array.bind();
+
+        // vertex buffer: define 8 vertices of the box
+        let _filled_buffer_position = GlBuffer::new();
+        _filled_buffer_position.bind(gl::ARRAY_BUFFER);
+        let per_face_vertices: [f32; 3*4*6] = [
+	        // front
+            -1.0, -1.0, 1.0,
+            1.0, -1.0, 1.0,
+            1.0, 1.0, 1.0,
+            -1.0, 1.0, 1.0,
+            // back
+            1.0, -1.0, -1.0,
+            -1.0, -1.0, -1.0,
+            -1.0, 1.0, -1.0,
+            1.0, 1.0, -1.0,
+            // right
+            1.0, -1.0, 1.0,
+            1.0, -1.0, -1.0,
+            1.0, 1.0, -1.0,
+            1.0, 1.0, 1.0,
+            // left
+            -1.0, -1.0, -1.0,
+            -1.0, -1.0, 1.0,
+            -1.0, 1.0, 1.0,
+            -1.0, 1.0, -1.0,
+            // top
+            -1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0,
+            1.0, 1.0, -1.0,
+            -1.0, 1.0, -1.0,
+            // bottom
+            1.0, -1.0, 1.0,
+            -1.0, -1.0, 1.0,
+            -1.0, -1.0, -1.0,
+            1.0, -1.0, -1.0,
+        ];
+        unsafe {
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (per_face_vertices.len() * mem::size_of::<f32>()) as GLsizeiptr,
+                mem::transmute(&per_face_vertices[0]),
+                gl::STATIC_DRAW,
+            );
+        }
+
         BoxDrawer {
             outlines_program,
             outlines_u_transform,
             outlines_u_color,
             outlines_vertex_array,
             _outlines_buffer_position,
-            _outlines_buffer_indices
+            _outlines_buffer_indices,
+            filled_vertex_array,
+            _filled_buffer_position,
         }        
     }
 
