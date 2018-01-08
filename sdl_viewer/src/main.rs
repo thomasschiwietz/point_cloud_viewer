@@ -130,7 +130,11 @@ fn draw_octree_view(outlined_box_drawer: &OutlinedBoxDrawer, camera: &Camera, ca
     //     vec![1.,0.,1.,1.],
     // ];
 
-    let mx_camera_octree: Matrix4<f32> = camera_octree.get_world_to_gl();
+    // plane is fixed
+    let mut mx_camera_octree: Matrix4<f32> = camera_octree.get_world_to_gl();
+
+    // frustum is fixed
+    // mx_camera_octree = camera_octree.get_projection_matrix() * Matrix4f::from_angle_x(Rad::from(Deg(90.))) * camera.get_world_to_camera();
 
     // 1. render all nodes in dark gray
     for visible_node in visible_nodes {
