@@ -37,6 +37,7 @@ pub struct BoxDrawer
     // filled program, buffer, uniform locations
     filled_vertex_array: GlVertexArray,
     _filled_buffer_position: GlBuffer,
+    _filled_buffer_normals: GlBuffer,
 }
 
 impl BoxDrawer {
@@ -110,7 +111,7 @@ impl BoxDrawer {
         let filled_vertex_array = GlVertexArray::new();
         filled_vertex_array.bind();
 
-        // vertex buffer: define 8 vertices of the box
+        // vertex buffer for filled box
         let _filled_buffer_position = GlBuffer::new();
         _filled_buffer_position.bind(gl::ARRAY_BUFFER);
         let per_face_vertices: [f32; 3*4*6] = [
@@ -154,6 +155,50 @@ impl BoxDrawer {
             );
         }
 
+        // vertex buffer for filled box: normals
+        let _filled_buffer_normals = GlBuffer::new();
+        _filled_buffer_normals.bind(gl::ARRAY_BUFFER);
+        let per_face_vertex_normals: [f32; 3*4*6] = [
+	        // front
+            0.0, 0.0, 1.0,
+            0.0, 0.0, 1.0,
+            0.0, 0.0, 1.0,
+            0.0, 0.0, 1.0,
+            // back
+            0.0, 0.0, -1.0,
+            0.0, 0.0, -1.0,
+            0.0, 0.0, -1.0,
+            0.0, 0.0, -1.0,
+            // right
+            1.0, 0.0, 0.0,
+            1.0, 0.0, 0.0,
+            1.0, 0.0, 0.0,
+            1.0, 0.0, 0.0,
+            // left
+            -1.0, 0.0, 0.0,
+            -1.0, 0.0, 0.0,
+            -1.0, 0.0, 0.0,
+            -1.0, 0.0, 0.0,
+            // top
+            0.0, 1.0, 0.0,
+            0.0, 1.0, 0.0,
+            0.0, 1.0, 0.0,
+            0.0, 1.0, 0.0,
+            // bottom
+            0.0, -1.0, 0.0,
+            0.0, -1.0, 0.0,
+            0.0, -1.0, 0.0,
+            0.0, -1.0, 0.0,
+        ];
+        unsafe {
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (per_face_vertex_normals.len() * mem::size_of::<f32>()) as GLsizeiptr,
+                mem::transmute(&per_face_vertex_normals[0]),
+                gl::STATIC_DRAW,
+            );
+        }
+
         BoxDrawer {
             outlines_program,
             outlines_u_transform,
@@ -163,6 +208,7 @@ impl BoxDrawer {
             _outlines_buffer_indices,
             filled_vertex_array,
             _filled_buffer_position,
+            _filled_buffer_normals,
         }        
     }
 
