@@ -432,8 +432,8 @@ enum RenderMode {
     BruteForce,
     Limited,
     OcclusionQuery,
-    ZBuffer,
     OcclusionQuerySkipSmallFrustums,
+    ZBuffer,
 }
 
 fn main() {
