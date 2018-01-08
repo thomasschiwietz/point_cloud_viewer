@@ -38,6 +38,7 @@ pub struct BoxDrawer
     filled_vertex_array: GlVertexArray,
     _filled_buffer_position: GlBuffer,
     _filled_buffer_normals: GlBuffer,
+    _filled_buffer_indices: GlBuffer,
 }
 
 impl BoxDrawer {
@@ -58,7 +59,7 @@ impl BoxDrawer {
         // vertex buffer: define 8 vertices of the box
         let _outlines_buffer_position = GlBuffer::new();
         _outlines_buffer_position.bind(gl::ARRAY_BUFFER);
-        let vertices: [f32; 3*8] = [
+        let box_vertices: [f32; 3*8] = [
             -1.0, -1.0, 1.0,
             1.0, -1.0, 1.0,
             1.0,  1.0, 1.0,
@@ -71,8 +72,8 @@ impl BoxDrawer {
         unsafe {
             gl::BufferData(
                 gl::ARRAY_BUFFER,
-                (vertices.len() * mem::size_of::<f32>()) as GLsizeiptr,
-                mem::transmute(&vertices[0]),
+                (box_vertices.len() * mem::size_of::<f32>()) as GLsizeiptr,
+                mem::transmute(&box_vertices[0]),
                 gl::STATIC_DRAW,
             );
         }
@@ -80,7 +81,7 @@ impl BoxDrawer {
         // define index buffer for 24 edges of the box
         let _outlines_buffer_indices = GlBuffer::new();
         _outlines_buffer_indices.bind(gl::ELEMENT_ARRAY_BUFFER);
-        let indices: [i32; 24] = [
+        let outline_indices: [i32; 24] = [
             0,1, 1,2, 2,3, 3,0,		// front
 		    4,5, 5,6, 6,7, 7,4,		// back
 		    1,5, 6,2,				// right
@@ -89,8 +90,8 @@ impl BoxDrawer {
         unsafe {
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
-                (indices.len() * mem::size_of::<i32>()) as GLsizeiptr,
-                mem::transmute(&indices[0]),
+                (outline_indices.len() * mem::size_of::<i32>()) as GLsizeiptr,
+                mem::transmute(&outline_indices[0]),
                 gl::STATIC_DRAW,
             );
         }
@@ -199,6 +200,31 @@ impl BoxDrawer {
             );
         }
 
+        // define index buffer for 24 edges of the box
+        let _filled_buffer_indices = GlBuffer::new();
+        _filled_buffer_indices.bind(gl::ELEMENT_ARRAY_BUFFER);
+        let mut filled_indices: [i32; 6*6] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+        for i in 0..6 {
+            let o = 6 * i;
+            let v = 4 * i as i32;
+
+            filled_indices[o + 0] = v + 0;
+            filled_indices[o + 1] = v + 1;
+            filled_indices[o + 2] = v + 2;
+
+            filled_indices[o + 3] = v + 2;
+            filled_indices[o + 4] = v + 3;
+            filled_indices[o + 5] = v + 0;
+        }
+        unsafe {
+            gl::BufferData(
+                gl::ELEMENT_ARRAY_BUFFER,
+                (filled_indices.len() * mem::size_of::<i32>()) as GLsizeiptr,
+                mem::transmute(&filled_indices[0]),
+                gl::STATIC_DRAW,
+            );
+        }
+
         BoxDrawer {
             outlines_program,
             outlines_u_transform,
@@ -209,6 +235,7 @@ impl BoxDrawer {
             filled_vertex_array,
             _filled_buffer_position,
             _filled_buffer_normals,
+            _filled_buffer_indices,
         }        
     }
 
