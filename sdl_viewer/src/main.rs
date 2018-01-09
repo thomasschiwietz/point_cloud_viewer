@@ -136,6 +136,18 @@ fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Cam
     // frustum is fixed
     // mx_camera_octree = camera_octree.get_projection_matrix() * Matrix4f::from_angle_x(Rad::from(Deg(90.))) * camera.get_world_to_camera();
 
+    // -1. render grid lines 25 cm spacing
+    {
+        let color = vec![0.2, 0.2, 0.3, 1.0];
+        box_drawer.update_color(&color);
+        for i in 1..5 {
+            let mx = camera_octree.get_projection_matrix() * Matrix4f::from_nonuniform_scale(200.0, i as f32 * 25.0, 1.);
+            box_drawer.update_transform(&mx);
+            box_drawer.draw_outlines();
+        }
+    }
+
+
     // 0. render all nodes
     node_drawer.update_world_to_gl(&mx_camera_octree);
     for visible_node in visible_nodes {
@@ -1153,9 +1165,9 @@ fn main() {
         }
 
         // draw filled box for debugging
-        let color = vec![1.,1.,0.,1.];
-        let mx_local_to_gl = camera.get_world_to_gl() * Matrix4f::from_scale(4.0);
-        box_drawer.draw_filled(&color, &camera.get_world_to_camera(), &mx_local_to_gl);
+        //let color = vec![1.,1.,0.,1.];
+        //let mx_local_to_gl = camera.get_world_to_gl() * Matrix4f::from_scale(4.0);
+        //box_drawer.draw_filled(&color, &camera.get_world_to_camera(), &mx_local_to_gl);
 
         if show_octree_view {
             draw_octree_view(&box_drawer, &camera, &camera_octree, &visible_nodes, &occlusion_world_to_proj_matrices, &mut node_views, &node_drawer);
