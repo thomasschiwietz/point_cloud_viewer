@@ -1128,6 +1128,11 @@ fn main() {
             }
         }
 
+        // draw filled box for debugging
+        let color = vec![1.,1.,0.,1.];
+        let mx_local_to_gl = camera.get_world_to_gl() * Matrix4f::from_scale(4.0);
+        box_drawer.draw_filled(&color, &camera.get_world_to_camera(), &mx_local_to_gl);
+
         if show_octree_view {
             draw_octree_view(&box_drawer, &camera, &camera_octree, &visible_nodes, &occlusion_world_to_proj_matrices, &mut node_views, &node_drawer);
         }

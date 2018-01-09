@@ -310,4 +310,16 @@ impl BoxDrawer {
             gl::DrawElements(gl::LINES, 24, gl::UNSIGNED_INT, ptr::null());
         }
     }
+
+    pub fn draw_filled(&self, color: &Vec<f32>, world_to_view: &Matrix4<f32>, world_to_gl: &Matrix4<f32>) {
+        self.filled_vertex_array.bind();
+
+        unsafe {
+            gl::UseProgram(self.filled_program.id);
+            gl::UniformMatrix4fv(self.filled_u_transform, 1, false as GLboolean, world_to_gl.as_ptr());
+            gl::UniformMatrix4fv(self.filled_u_model_view_transform, 1, false as GLboolean, world_to_view.as_ptr());
+            gl::Uniform4fv(self.filled_u_color, 1, color.as_ptr());
+            gl::DrawElements(gl::TRIANGLES, 6*6, gl::UNSIGNED_INT, ptr::null());
+        }
+    }
 }
