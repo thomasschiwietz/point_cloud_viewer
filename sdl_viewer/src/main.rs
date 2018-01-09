@@ -222,6 +222,13 @@ fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Cam
     box_drawer.update_transform(&mx);
     box_drawer.draw_outlines();
 
+    // render border
+    let border_color = vec![0.5, 0.5, 0.6, 1.0];
+    let mx = Matrix4f::from_nonuniform_scale(1. - (1. / camera_octree.width as f32), 1. - (1. / camera_octree.height as f32), 1.);
+    box_drawer.update_transform(&mx);
+    box_drawer.update_color(&border_color);
+    box_drawer.draw_outlines();
+
     unsafe {
         //gl::LineWidth(1.0);
         //gl::Disable(gl::LINE_SMOOTH);    
