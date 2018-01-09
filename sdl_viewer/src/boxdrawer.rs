@@ -24,6 +24,9 @@ use cgmath::{Array, Matrix, Matrix4};
 const FRAGMENT_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/outlinedBox.fs");
 const VERTEX_SHADER_OUTLINED_BOX: &'static str = include_str!("../shaders/outlinedBox.vs");
 
+const FRAGMENT_SHADER_FILLED_BOX: &'static str = include_str!("../shaders/filledBox.fs");
+const VERTEX_SHADER_FILLED_BOX: &'static str = include_str!("../shaders/filledBox.vs");
+
 pub struct BoxDrawer
 {
     // outlines program, buffer, uniform locations
@@ -35,6 +38,10 @@ pub struct BoxDrawer
     _outlines_buffer_indices: GlBuffer,
 
     // filled program, buffer, uniform locations
+    filled_program: GlProgram,
+    filled_u_transform: GLint,
+    filled_u_model_view_transform: GLint,
+    filled_u_color: GLint,
     filled_vertex_array: GlVertexArray,
     _filled_buffer_position: GlBuffer,
     _filled_buffer_normals: GlBuffer,
@@ -109,6 +116,18 @@ impl BoxDrawer {
             );
         }
 
+        let filled_program = GlProgram::new(VERTEX_SHADER_FILLED_BOX, FRAGMENT_SHADER_FILLED_BOX);  
+        let filled_u_transform;
+        let filled_u_model_view_transform;
+        let filled_u_color;
+    
+        unsafe {
+            gl::UseProgram(outlines_program.id);
+            filled_u_transform = gl::GetUniformLocation(filled_program.id, c_str!("transform"));
+            filled_u_model_view_transform = gl::GetUniformLocation(filled_program.id, c_str!("modelViewTransform"));
+            filled_u_color = gl::GetUniformLocation(filled_program.id, c_str!("color"));
+        }
+
         let filled_vertex_array = GlVertexArray::new();
         filled_vertex_array.bind();
 
@@ -156,6 +175,19 @@ impl BoxDrawer {
             );
         }
 
+        unsafe{
+            let pos_attr = gl::GetAttribLocation(filled_program.id, c_str!("aPos"));
+            gl::EnableVertexAttribArray(pos_attr as GLuint);
+            gl::VertexAttribPointer(
+                pos_attr as GLuint,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                3 * mem::size_of::<f32>() as i32,
+                ptr::null(),
+            );
+        }
+
         // vertex buffer for filled box: normals
         let _filled_buffer_normals = GlBuffer::new();
         _filled_buffer_normals.bind(gl::ARRAY_BUFFER);
@@ -200,6 +232,19 @@ impl BoxDrawer {
             );
         }
 
+        unsafe {
+            let normal_attr = gl::GetAttribLocation(filled_program.id, c_str!("aNormal"));
+            gl::EnableVertexAttribArray(normal_attr as GLuint);
+            gl::VertexAttribPointer(
+                normal_attr as GLuint,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                3 * mem::size_of::<f32>() as i32,
+                ptr::null(),
+            );
+        }
+
         // define index buffer for 24 edges of the box
         let _filled_buffer_indices = GlBuffer::new();
         _filled_buffer_indices.bind(gl::ELEMENT_ARRAY_BUFFER);
@@ -232,6 +277,10 @@ impl BoxDrawer {
             outlines_vertex_array,
             _outlines_buffer_position,
             _outlines_buffer_indices,
+            filled_program,
+            filled_u_transform,
+            filled_u_model_view_transform,
+            filled_u_color,
             filled_vertex_array,
             _filled_buffer_position,
             _filled_buffer_normals,
