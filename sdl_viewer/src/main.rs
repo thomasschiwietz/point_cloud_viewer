@@ -136,7 +136,7 @@ fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Cam
     // frustum is fixed
     // mx_camera_octree = camera_octree.get_projection_matrix() * Matrix4f::from_angle_x(Rad::from(Deg(90.))) * camera.get_world_to_camera();
 
-    // -1. render grid lines 25 cm spacing
+    // -1. render grid lines 25 m spacing
     {
         let color = vec![0.2, 0.2, 0.3, 1.0];
         box_drawer.update_color(&color);
@@ -164,13 +164,8 @@ fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Cam
 
     // 1. render all nodes in dark gray
     for visible_node in visible_nodes {
-        draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.2,0.2,1.]); 
-    }
-
-    // 2. render all drawn nodes in green
-    for visible_node in visible_nodes {
-        if visible_node.drawn {
-            draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.75,0.2,1.]);
+        if !visible_node.occluder {
+            draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.2,0.2,1.]);
         }
     }
 
@@ -193,7 +188,8 @@ fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Cam
 
     // 5. render all occluder nodes
     unsafe {
-        gl::Enable(gl::DEPTH_TEST);
+        gl::Enable(gl::CULL_FACE);
+        gl::CullFace(gl::BACK);
     }
     for visible_node in visible_nodes {
         if visible_node.occluder {
@@ -201,11 +197,19 @@ fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Cam
         }
     }
     unsafe {
+        gl::Disable(gl::CULL_FACE);
         gl::Disable(gl::DEPTH_TEST);
     }
     for visible_node in visible_nodes {
         if visible_node.occluder {
             draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.2,1.]); 
+        }
+    }
+
+    // 2. render all drawn nodes in green
+    for visible_node in visible_nodes {
+        if visible_node.drawn {
+            draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.2,0.75,0.2,1.]);
         }
     }
 
