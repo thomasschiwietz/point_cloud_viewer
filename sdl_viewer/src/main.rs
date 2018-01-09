@@ -180,9 +180,20 @@ fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Cam
     }
 
     // 5. render all occluder nodes
+    unsafe {
+        gl::Enable(gl::DEPTH_TEST);
+    }
     for visible_node in visible_nodes {
         if visible_node.occluder {
-            draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.75,1.]); 
+            draw_filled_box(&box_drawer, &camera_octree.get_world_to_camera(), &mx_camera_octree, &visible_node.bounding_cube, &vec![0.5,0.2,0.2,1.]); 
+        }
+    }
+    unsafe {
+        gl::Disable(gl::DEPTH_TEST);
+    }
+    for visible_node in visible_nodes {
+        if visible_node.occluder {
+            draw_outlined_box(&box_drawer, &mx_camera_octree, &visible_node.bounding_cube, &vec![0.75,0.2,0.2,1.]); 
         }
     }
 
@@ -220,6 +231,19 @@ fn draw_outlined_box(box_drawer: &BoxDrawer, projection_view_matrix: &Matrix4<f3
     box_drawer.update_color(&color);
 
     box_drawer.draw_outlines();
+}
+
+fn draw_filled_box(box_drawer: &BoxDrawer, mx_world_to_camera: &Matrix4f, projection_view_matrix: &Matrix4<f32>, cube: &Cube, color: &Vec<f32>)
+{
+    // create scale matrix   
+    let mx_scale = Matrix4::from_scale(cube.edge_length() / 2.);
+    
+    // create translation matrix
+    let mx_translation = Matrix4::from_translation(cube.center());
+    
+    let mx = projection_view_matrix * mx_translation * mx_scale;
+
+    box_drawer.draw_filled(&color, &mx_world_to_camera, &mx);
 }
 
 fn reshuffle(new_order: &[usize], old_data: Vec<u8>, bytes_per_vertex: usize) -> Vec<u8> {
@@ -659,7 +683,7 @@ fn main() {
 
         let mut occlusion_world_to_proj_matrices = Vec::new();
 
-        gl_query.begin_samples_passed();
+        //gl_query.begin_samples_passed();
 
         let mut current_batch = 0;
         let mut num_queries = 0;
@@ -1047,7 +1071,7 @@ fn main() {
             },
         }
 
-        gl_query.end();
+        //gl_query.end();
 
         if show_octree_nodes {
             for v in &visible_nodes {
@@ -1139,7 +1163,7 @@ fn main() {
 
         window.gl_swap_window();
 
-        let samples_passed = gl_query.query_samples_passed();
+        let samples_passed = 0;//gl_query.query_samples_passed();
 
         let err;
         unsafe {
