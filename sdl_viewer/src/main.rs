@@ -504,6 +504,7 @@ enum RenderMode {
     Limited,
     OcclusionQuery,
     OcclusionQuerySkipSmallFrustums,
+    OcclusionAsncQuery,
     ZBuffer,
 }
 
@@ -626,7 +627,8 @@ fn main() {
                         Scancode::Num2 => { render_mode = RenderMode::Limited; println!("render mode: limited"); },
                         Scancode::Num3 => { render_mode = RenderMode::OcclusionQuery; println!("render mode: occlusion query"); },
                         Scancode::Num4 => { render_mode = RenderMode::OcclusionQuerySkipSmallFrustums; println!("render mode: occlusion query: skip small frustums"); },
-                        Scancode::Num5 => { render_mode = RenderMode::ZBuffer; println!("render mode: zbuffer"); },
+                        Scancode::Num5 => { render_mode = RenderMode::OcclusionAsncQuery; println!("render mode: occlusion query: async"); },
+                        Scancode::Num6 => { render_mode = RenderMode::ZBuffer; println!("render mode: zbuffer"); },
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
@@ -1088,6 +1090,124 @@ fn main() {
                                 
                                 //break;
                             }
+                        }
+                    }
+                }
+            },
+            RenderMode::OcclusionAsncQuery => {
+                let mut max_edge_length = 0.;
+                let mut min_edge_length = 10000000.;
+                for visible_node in &visible_nodes {
+                    let e = visible_node.bounding_cube.edge_length();
+                    if e < min_edge_length { min_edge_length = e; }
+                    if e > max_edge_length { max_edge_length = e; }
+                }
+                //println!("min/max {} x {}", min_edge_length, max_edge_length);
+
+                occlusion_world_to_proj_matrices.clear();
+
+                let mut request_query = false;
+                let mut query_submitted = false;
+                let mut query_points_submitted = 0;
+                let mut query_wait_for_result = false;
+                let mut query_node_index = 0;
+
+                let node_count = visible_nodes.len();
+                for i in 0..node_count {
+                    if visible_nodes[i].occluded {
+                        continue;
+                    }
+
+                    if let Some(view) = node_views.get(&visible_nodes[i].id) {
+
+                        if request_query && visible_nodes[i].bounding_cube.edge_length() >= 3. * min_edge_length {
+                            gl_query_node.begin_samples_passed();
+                            request_query = false;
+                            query_submitted = true;
+                            query_node_index = i;
+                            println!("query node {}", i);
+                        }
+
+                        let node_points_submitted = node_drawer.draw(
+                            view,
+                            if use_level_of_detail {
+                                visible_nodes[i].level_of_detail
+                            } else {
+                                1
+                            },
+                            point_size, gamma
+                        );
+
+                        if query_submitted {
+                            gl_query_node.end();
+                            query_points_submitted = node_points_submitted;
+                            query_wait_for_result = true;
+                        }
+
+                        visible_nodes[i].drawn = true;
+
+                        if query_wait_for_result {
+                            if gl_query_node.is_result_available() {
+
+                                println!("current {}, requested {}", i, query_node_index);
+
+                                let samples_passed = gl_query_node.query_samples_passed();
+
+                                let pass_ratio = samples_passed as f32 / query_points_submitted as f32;
+                                if pass_ratio < 0.001 {
+
+                                    visible_nodes[i].occluder = true;
+
+                                    let world_to_camera_matrix = camera.get_world_to_camera();
+                                    let occ_projection_matrix = get_occlusion_projection_matrix(&visible_nodes[query_node_index].bounding_cube, &world_to_camera_matrix);
+                                    let mx = occ_projection_matrix * world_to_camera_matrix;
+                                    let frustum = Frustum::from_matrix(&mx);
+
+                                    // add occlusion frustum to debug view
+                                    occlusion_world_to_proj_matrices.push(mx);                                
+
+                                    for j in (query_node_index+1)..node_count {
+                                        if visible_nodes[j].occluder {          // this should never happen
+                                            continue;
+                                        }
+                                        if visible_nodes[j].occluded {
+                                            continue;
+                                        }
+                                        if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
+                                            visible_nodes[j].occluded = true;
+                                        }
+                                    }
+                                }
+                                num_queries += 1;
+
+                                query_wait_for_result = false;
+                                query_submitted = false;
+
+                                break;
+                            }
+                            //else {
+                            //     println!("not available {} {} {}", request_query, query_submitted, query_wait_for_result);
+                            // }
+                        }
+
+                        num_points_drawn += node_points_submitted;
+                        num_nodes_drawn += 1;
+                        current_num_screen_space_pixels += node_points_submitted;
+
+                        if current_num_screen_space_pixels >= num_screen_space_pixels {
+                            current_batch += 1;
+                            current_num_screen_space_pixels = 0;
+
+                            if !request_query && !query_submitted {
+                                if current_batch >= batch_size {
+                                    request_query = true;
+                                }
+                            } //else {
+                                // finish query state after one batch
+                                //query_state = false;
+                                
+                                //break;
+                            //}
                         }
                     }
                 }

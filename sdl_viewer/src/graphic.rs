@@ -145,6 +145,17 @@ impl GlQuery {
         //println!("end query {}, error = {}", self.target, error);
     }
 
+    pub fn is_result_available(&self) -> bool {
+        let mut result: u32 = 0;
+        let error;
+        unsafe {
+            gl::GetQueryObjectuiv(self.id, gl::QUERY_RESULT_AVAILABLE, &mut result);
+            error = gl::GetError();
+        }
+        // println!("result {}, error = {}", result, error);
+        result == gl::TRUE as u32
+    }
+
     pub fn query_samples_passed(&mut self) -> u32 {
         let mut result: u32 = 0;
         let error;
