@@ -87,7 +87,7 @@ impl Reduction {
     }
 
     // return texture_id of result
-    pub fn reduce_max(&self, depth_texture_id: GLuint, tex_width: i32, tex_height: i32, max_steps: i32) -> (GLuint, f32, usize, i32, i32) {
+    pub fn reduce_max(&self, depth_texture_id: GLuint, tex_width: i32, tex_height: i32, max_steps: i32, min_size: i32) -> (GLuint, f32, usize, i32, i32) {
         // TDO(tschiwietz): save current viewport
 
         // frame buffer size
@@ -163,7 +163,7 @@ impl Reduction {
             src_texture_scale /= 2.;
 
             // limit reduction
-            if dst_width < 8 || dst_height < 8 {
+            if dst_width < min_size || dst_height < min_size {
                 break;
             }
         }

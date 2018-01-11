@@ -567,6 +567,7 @@ fn main() {
     let zbuffer_drawer = ZBufferDrawer::new();
     let mut reduction = Reduction::new(WINDOW_WIDTH, WINDOW_HEIGHT);
     let mut max_reduce_steps = 1;
+    let mut reduction_limit = 4;
 
     let mut camera = Camera::new(WINDOW_WIDTH, WINDOW_HEIGHT, false);
     camera.set_pos_rot(&Vector3::new(-4., 8.5, 1.), Deg(90.), Deg(90.));
@@ -576,7 +577,7 @@ fn main() {
 
     let mut gl_query = GlQuery::new();
     let mut gl_query_node = GlQuery::new();
-    let mut batch_size = 10;
+    let mut batch_size = 30;
 
     let mut render_mode = RenderMode::BruteForce;
 
@@ -642,6 +643,8 @@ fn main() {
                         Scancode::H => { slice_limit -= 1; slice_limit = cmp::max(slice_limit, 1); println!("slice_limit {}", slice_limit) },
                         Scancode::J => { slice_limit += 1; println!("slice_limit {}", slice_limit) },
                         Scancode::LShift => shift_pressed = true,
+                        Scancode::U => { reduction_limit /= 2; println!("reduction_limit {}", reduction_limit) },
+                        Scancode::I => { reduction_limit *= 2; println!("reduction_limit {}", reduction_limit) },
                         _ => (), 
                     }
                 }
@@ -858,6 +861,13 @@ fn main() {
                 }
             },
             RenderMode::ZBuffer => {
+                // clear occlusion
+                for i in 0..visible_nodes.len() {
+                    visible_nodes[i].drawn = false;
+                    visible_nodes[i].occluder = false;
+                    visible_nodes[i].occluded = false;
+                } 
+
                 occlusion_world_to_proj_matrices.clear();
                 let node_count = visible_nodes.len();
                 let mut cell_depth: Vec<f32> = Vec::new();
@@ -884,122 +894,124 @@ fn main() {
                         num_points_drawn += node_points_drawn;
                         num_nodes_drawn += 1;
                         current_num_screen_space_pixels += node_points_drawn;
+                    }
 
-                        if current_num_screen_space_pixels >= num_screen_space_pixels {
-                            current_batch += 1;
-                            current_num_screen_space_pixels = 0;
+                    if current_num_screen_space_pixels >= num_screen_space_pixels {
+                        current_batch += 1;
+                        current_num_screen_space_pixels = 0;
 
-                            if current_batch >= batch_size {
-                                // copy depth buffer to texture
-                                unsafe {
-                                    gl::BindTexture(gl::TEXTURE_2D, gl_depth_texture.id);
-                                    gl::ReadBuffer(gl::BACK);
-                                    gl::CopyTexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT, 0, 0, camera.width, camera.height, 0);
-                                }
+                        if current_batch == batch_size {
+                            //current_batch = 0;
+                            // copy depth buffer to texture
+                            unsafe {
+                                gl::BindTexture(gl::TEXTURE_2D, gl_depth_texture.id);
+                                gl::ReadBuffer(gl::BACK);
+                                gl::CopyTexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT, 0, 0, camera.width, camera.height, 0);
+                            }
 
-                                // reduce z-buffer
-                                let (_texture_id, _tex_scale, framebuffer_id, width, height) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, 10);
+                            // reduce z-buffer
+                            let (_texture_id, _tex_scale, framebuffer_id, width, height) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, 20, reduction_limit);
 
-                                // download data
-                                let data = reduction.download_data(framebuffer_id, width, height);
+                            // download data
+                            let data = reduction.download_data(framebuffer_id, width, height);
 
-                                // bug: framebuffer must reset correct viewport
-                                unsafe {
-                                    gl::Viewport(0, 0, camera.width, camera.height);
-                                }
+                            // bug: framebuffer must reset correct viewport
+                            unsafe {
+                                gl::Viewport(0, 0, camera.width, camera.height);
+                            }
 
-                                let projection_matrix = camera.get_projection_matrix();
-                                let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
+                            let projection_matrix = camera.get_projection_matrix();
+                            let inv_projection_matrix: Matrix4<f32> = projection_matrix.inverse_transform().unwrap().into();
 
-                                // create frustum for each z-buffer tile
-                                let mut i = 0;
-                                for y in 0..height {
-                                    for x in 0..width {
-                                        let depth = data[i];
+                            // create frustum for each z-buffer tile
+                            let mut p = 0;
+                            for y in 0..height {
+                                for x in 0..width {
+                                    let depth = data[p];
 
-                                        // don't frustum cull cells that have already culled with a nearer near plane
-                                        let linear_pos = (y * width + x) as usize;
-                                        if depth as f32 > cell_depth[linear_pos] as f32 {
-                                            println!("skip: {},{}: depth {}, cell_depth {}", x,y, depth, cell_depth[linear_pos]);
-                                            // why is this never happening?
-                                            // why doesn't this work?
-                                            //if depth >= 1.0 {
-                                            //    continue;
-                                            //}
-                                            //println!("depth {}", depth);
-                                            continue;
-                                        }
-                                        cell_depth[linear_pos] = depth;
 
-                                        let mut cuboid = Cuboid::new();
+                                    // don't frustum cull cells that have already culled with a nearer near plane
+                                    let linear_pos = (y * width + x) as usize;
+                                    //println!("{}, {} -> {} / {}", x, y, depth, cell_depth[linear_pos]);
+                                    if depth as f32 > cell_depth[linear_pos] as f32 {
+                                        println!("skip: {},{}: depth {}, cell_depth {}", x,y, depth, cell_depth[linear_pos]);
+                                        // why is this never happening?
+                                        // why doesn't this work?
+                                        //if depth >= 1.0 {
+                                        //    continue;
+                                        //}
+                                        //println!("depth {}", depth);
+                                        continue;
+                                    }
+                                    cell_depth[linear_pos] = depth;
 
-                                        let mut proj_pos = Vec::new();
+                                    let mut cuboid = Cuboid::new();
 
-                                        // normalized coordinates in projection space for all four vertices of the tile
-                                        proj_pos.push(Vector4f::new(
-                                            (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
-                                            (y as f32 + 0.0) / (height) as f32 * 2. -1.,
-                                            depth,
-                                            1.));
+                                    let mut proj_pos = Vec::new();
 
-                                        // proj_pos.push(Vector4f::new(
-                                        //     (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
-                                        //     (y as f32 + 1.0) / (height) as f32 * 2. -1.,
-                                        //     depth,
-                                        //     1.));
+                                    // normalized coordinates in projection space for all four vertices of the tile
+                                    proj_pos.push(Vector4f::new(
+                                        (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
+                                        (y as f32 + 0.0) / (height) as f32 * 2. -1.,
+                                        depth,
+                                        1.));
 
-                                        // proj_pos.push(Vector4f::new(
-                                        //     (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
-                                        //     (y as f32 + 1.0) / (height) as f32 * 2. -1.,
-                                        //     depth,
-                                        //     1.));
+                                    // proj_pos.push(Vector4f::new(
+                                    //     (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
+                                    //     (y as f32 + 1.0) / (height) as f32 * 2. -1.,
+                                    //     depth,
+                                    //     1.));
 
-                                        proj_pos.push(Vector4f::new(
-                                            (x as f32 + 1.) / (width) as f32 * 2. - 1.,
-                                            (y as f32 + 1.) / (height) as f32 * 2. -1.,
-                                            depth,
-                                            1.));
+                                    // proj_pos.push(Vector4f::new(
+                                    //     (x as f32 + 0.0) / (width) as f32 * 2. - 1.,
+                                    //     (y as f32 + 1.0) / (height) as f32 * 2. -1.,
+                                    //     depth,
+                                    //     1.));
 
-                                        // transform back to camera space
-                                        for p in proj_pos.iter() {
-                                            let camera_pos = inv_projection_matrix * p;
+                                    proj_pos.push(Vector4f::new(
+                                        (x as f32 + 1.) / (width) as f32 * 2. - 1.,
+                                        (y as f32 + 1.) / (height) as f32 * 2. -1.,
+                                        depth,
+                                        1.));
 
-                                            let homo_pos = Vector3f::new(
-                                                camera_pos.x / camera_pos.w,
-                                                camera_pos.y / camera_pos.w,
-                                                camera_pos.z / camera_pos.w,
-                                            );
+                                    // transform back to camera space
+                                    for p in proj_pos.iter() {
+                                        let camera_pos = inv_projection_matrix * p;
 
-                                            cuboid.update(&homo_pos);
-                                        }
+                                        let homo_pos = Vector3f::new(
+                                            camera_pos.x / camera_pos.w,
+                                            camera_pos.y / camera_pos.w,
+                                            camera_pos.z / camera_pos.w,
+                                        );
 
-                                        // compute perspective matrix
-                                        let min = cuboid.min();
-                                        let max = cuboid.max();
-                                        if -min.z < 10000.0 {         
-                                            let occ_proj_matrix = Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.});
-                                            let world_to_camera_matrix = camera.get_world_to_camera();
-                                            let mx = occ_proj_matrix * world_to_camera_matrix;
-                                            occlusion_world_to_proj_matrices.push(mx);
-                                            let frustum = Frustum::from_matrix(&mx);
+                                        cuboid.update(&homo_pos);
+                                    }
 
-                                            for j in (i+1)..node_count {
-                                            //for j in 0..node_count {
-                                                if visible_nodes[j].occluded {
-                                                    continue;
-                                                }
-                                                if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
-                                                    visible_nodes[j].occluded = true;
-                                                }
+                                    // compute perspective matrix
+                                    let min = cuboid.min();
+                                    let max = cuboid.max();
+                                    if -min.z < 10000.0 {         
+                                        let occ_proj_matrix = Matrix4::from(Perspective{left: min.x, right: max.x, bottom: min.y, top: max.y, near: -min.z, far: 10000.});
+                                        let world_to_camera_matrix = camera.get_world_to_camera();
+                                        let mx = occ_proj_matrix * world_to_camera_matrix;
+                                        occlusion_world_to_proj_matrices.push(mx);
+                                        let frustum = Frustum::from_matrix(&mx);
+
+                                        for j in (i+1)..node_count {
+                                        //for j in 0..node_count {
+                                            if visible_nodes[j].occluded {
+                                                continue;
+                                            }
+                                            if frustum.intersects_inside_or_intersect(&visible_nodes[j].bounding_cube) {
+                                                visible_nodes[j].occluded = true;
+                                                visible_nodes[j].occluder = true;
                                             }
                                         }
-
-                                        i = i + 1;
                                     }
+                                    p = p + 1;                                    
                                 }
-
-                                //break;
                             }
+                            //break;
                         }
                     }
                 }
@@ -1235,7 +1247,7 @@ fn main() {
             if !show_reduced_depth_buffer {
                 zbuffer_drawer.draw(gl_depth_texture.id, 1., 1.);
             } else {
-                let (texture_id, tex_scale, framebuffer_id, width, height) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, max_reduce_steps);
+                let (texture_id, tex_scale, framebuffer_id, width, height) = reduction.reduce_max(gl_depth_texture.id, camera.width, camera.height, max_reduce_steps, 8);
 
                 zbuffer_drawer.draw(texture_id, tex_scale, tex_scale);
 
