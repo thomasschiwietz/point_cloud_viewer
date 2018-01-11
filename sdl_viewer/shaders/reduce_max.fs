@@ -36,7 +36,9 @@ void main()
     float d_10 = texture(aTex, src_tex_10).x;
 
     // maximum of all values
-    float d = max(max(d_00, d_11), max(d_01, d_10));
+    //float d = max(max(d_00, d_11), max(d_01, d_10));
+    //float d = min(min(d_00, d_11), min(d_01, d_10));
+    float d = (d_00 + d_11 + d_01 + d_10) / 4.;
 
     FragColor = vec4(d);
 }
