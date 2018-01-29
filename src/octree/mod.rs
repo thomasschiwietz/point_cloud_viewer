@@ -98,7 +98,7 @@ fn size_in_pixels(
 pub struct OnDiskOctree {
     directory: PathBuf,
     nodes: HashMap<NodeId, NodeMeta>,
-    bounding_box: Aabb3<f32>,
+    pub bounding_box: Aabb3<f32>,
 }
 
 #[derive(Debug, PartialEq)]
