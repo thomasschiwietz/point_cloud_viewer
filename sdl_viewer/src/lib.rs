@@ -15,6 +15,7 @@
 extern crate cgmath;
 extern crate clap;
 extern crate lru_cache;
+extern crate protobuf;
 extern crate point_viewer;
 extern crate point_viewer_grpc;
 extern crate rand;
@@ -35,7 +36,11 @@ mod camera;
 pub mod opengl {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
+
+include!(concat!(env!("OUT_DIR"), "/proto.rs"));
+
 pub mod box_drawer;
+pub mod heightmap_drawer;
 pub mod color;
 // TODO(thomasschiwietz): Use 'Color' in the 'Point' struct in src/lib.rs (top level crate)
 // instead of using single variables for r,g,b
