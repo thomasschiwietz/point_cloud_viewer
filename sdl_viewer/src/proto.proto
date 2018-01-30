@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package avsoftware.proto;
+
+message GroundMap {
+  int32 size = 1;
+  double resolution_m = 2;
+  double origin_x = 3;
+  double origin_y = 4;
+  repeated double z = 5; // y-major
+}
