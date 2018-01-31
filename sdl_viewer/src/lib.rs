@@ -89,6 +89,7 @@ impl SdlViewer {
                     .index(1)
                     .required(true),
                 clap::Arg::with_name("cache_size_mb")
+                    .long("cache_size_mb")
                     .help(
                         "Maximum cache size in MB for octree nodes in GPU memory. \
                          The default value is 2000 MB and the valid range is 1000 MB to 16000 MB."
@@ -96,11 +97,10 @@ impl SdlViewer {
                     .takes_value(true)
                     .required(false),
                 clap::Arg::with_name("height_map_file_name")
+                    .long("height_map_file_name")
                     .help("The file name of a height map protobuf.")
-                    .index(2)
-                    //.takes_value(true)
-                    //.required(false),
-                    .required(true)
+                    .takes_value(true)
+                    .required(false),
             ])
             .get_matches();
 
