@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{Matrix, Matrix4, Vector3};
+use cgmath::{InnerSpace, Matrix, Matrix4, Vector3};
 use color::Color;
 use graphic::{GlBuffer, GlProgram, GlVertexArray};
 use opengl;
@@ -116,7 +116,10 @@ impl<'a> HeightMapDrawer<'a> {
     }
 
     fn compute_normal(v0: &Vector3<f32>, v1: &Vector3<f32>, v2: &Vector3<f32>) -> Vector3<f32> {
-        Vector3::new(0., 0., 1.)
+        let t0 = v2 - v0;
+        let t1 = v1 - v0;
+        let n = t0.cross(t1);
+        -n.normalize()
     }
 
     pub fn load_proto(&mut self, height_map_file_name: String) {
@@ -140,7 +143,8 @@ impl<'a> HeightMapDrawer<'a> {
                 let v = Vector3::new(
                     origin_x + (x as f32 * resolution_m),
                     origin_y + (y as f32 * resolution_m),
-                    ground_map_proto.z[i] as f32 - 10.,
+                    // f32::sin(x as f32 / (0.25 * size as f32) * y as f32 / (0.25 * size as f32)) + 50.
+                    ground_map_proto.z[i] as f32 + 50.,
                 );
                 grid_vertices.push(v);
                 i += 1;
