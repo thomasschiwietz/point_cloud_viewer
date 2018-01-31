@@ -41,6 +41,7 @@ pub struct HeightMapDrawer<'a> {
     vertex_array: GlVertexArray<'a>,
     buffer_position: GlBuffer<'a>,
     // buffer_normal: GlBuffer<'a>,
+    num_primitives: usize,
 }
 
 impl<'a> HeightMapDrawer<'a> {
@@ -85,6 +86,9 @@ impl<'a> HeightMapDrawer<'a> {
             //     ptr::null(),
             // );
         }
+
+        let num_primitives = 0;
+
         HeightMapDrawer {
             program,
             u_transform,
@@ -92,6 +96,7 @@ impl<'a> HeightMapDrawer<'a> {
             vertex_array,
             buffer_position,
             //buffer_normal,
+            num_primitives,
         }
     }
 
@@ -99,7 +104,7 @@ impl<'a> HeightMapDrawer<'a> {
         (x + y * size) as usize
     }
 
-    pub fn load_proto(&self, gl: &'a opengl::Gl, height_map_file_name: String) {
+    pub fn load_proto(&mut self, gl: &'a opengl::Gl, height_map_file_name: String) {
         // read proto
         let ground_map_proto = {
             let mut data = Vec::new();
@@ -127,6 +132,7 @@ impl<'a> HeightMapDrawer<'a> {
         }
 
         // compute triangle list
+        let mut num_primitives = 0;
         let mut triangle_vertices = Vec::new();
         for y in 0..size-1 {
             for x in 0..size-1 {
@@ -140,13 +146,16 @@ impl<'a> HeightMapDrawer<'a> {
                 triangle_vertices.push(v00);
                 triangle_vertices.push(v10);
                 triangle_vertices.push(v11);
+                num_primitives += 1;
 
                 // upper triangle
                 triangle_vertices.push(v00);
                 triangle_vertices.push(v11);
                 triangle_vertices.push(v01);
+                num_primitives += 1;
             }
         }
+        self.num_primitives = num_primitives;
 
         self.buffer_position.bind();
         unsafe {
@@ -160,6 +169,9 @@ impl<'a> HeightMapDrawer<'a> {
     }
 
     pub fn draw(&self, world_to_gl: &Matrix4<f32>, color: &Color) {
+        if self.num_primitives == 0 {
+            return;
+        }
         self.vertex_array.bind();
 
         unsafe {
@@ -170,6 +182,7 @@ impl<'a> HeightMapDrawer<'a> {
                 false as GLboolean,
                 world_to_gl.as_ptr(),
             );
+            // gl::UniformMatrix4fv(self.filled_u_model_view_transform, 1, false as GLboolean, world_to_view.as_ptr());
             self.program.gl.Uniform4f(
                 self.u_color,
                 color.red,
@@ -178,8 +191,8 @@ impl<'a> HeightMapDrawer<'a> {
                 color.alpha,
             );
             self.program.gl.DrawElements(
-                opengl::LINES,
-                24,
+                opengl::TRIANGLES,
+                self.num_primitives as i32,
                 opengl::UNSIGNED_INT,
                 ptr::null(),
             );

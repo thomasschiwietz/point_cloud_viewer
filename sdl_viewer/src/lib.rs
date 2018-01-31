@@ -178,7 +178,7 @@ impl SdlViewer {
         let octree_box_color = YELLOW;
         let mut show_octree_nodes = false;
 
-        let height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
+        let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
         if maybe_height_map_file_name.is_none() {
             height_map_drawer.load_proto(&gl, maybe_height_map_file_name.unwrap().to_string());
         }
