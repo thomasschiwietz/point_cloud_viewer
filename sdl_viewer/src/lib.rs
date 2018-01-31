@@ -91,12 +91,16 @@ impl SdlViewer {
                 clap::Arg::with_name("cache_size_mb")
                     .help(
                         "Maximum cache size in MB for octree nodes in GPU memory. \
-                         The default value is 2000 MB and the valid range is 1000 MB to 16000 MB.",
+                         The default value is 2000 MB and the valid range is 1000 MB to 16000 MB."
                     )
+                    .takes_value(true)
                     .required(false),
                 clap::Arg::with_name("height_map_file_name")
                     .help("The file name of a height map protobuf.")
-                    .required(false),
+                    .index(2)
+                    //.takes_value(true)
+                    //.required(false),
+                    .required(true)
             ])
             .get_matches();
 
@@ -179,9 +183,9 @@ impl SdlViewer {
         let mut show_octree_nodes = false;
 
         let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
-        if maybe_height_map_file_name.is_none() {
-            height_map_drawer.load_proto(&gl, maybe_height_map_file_name.unwrap().to_string());
-        }
+        // if !maybe_height_map_file_name.is_none() {           
+        //     height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string());
+        // }
 
         let mut camera = Camera::new(&gl, WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -307,10 +311,9 @@ impl SdlViewer {
                 }
             }
 
-            if !maybe_height_map_file_name.is_none() {
-                let color = YELLOW;
-                height_map_drawer.draw(&camera.get_world_to_gl(), &color);
-            }
+            let color = YELLOW;
+            
+            height_map_drawer.draw(&camera.get_world_to_gl(), &color);
 
             window.gl_swap_window();
             num_frames += 1;

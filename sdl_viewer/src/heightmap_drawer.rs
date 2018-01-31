@@ -27,8 +27,8 @@ use proto;
 use std::fs::File;
 use std::io::{Cursor, Read};
 
-const FRAGMENT_SHADER_OUTLINED_BOX: &str = include_str!("../shaders/heightmap.fs");
-const VERTEX_SHADER_OUTLINED_BOX: &str = include_str!("../shaders/heightmap.vs");
+const HM_FRAGMENT_SHADER: &str = include_str!("../shaders/heightmap.fs");
+const HM_VERTEX_SHADER: &str = include_str!("../shaders/heightmap.vs");
 
 pub struct HeightMapDrawer<'a> {
     program: GlProgram<'a>,
@@ -41,13 +41,14 @@ pub struct HeightMapDrawer<'a> {
     vertex_array: GlVertexArray<'a>,
     buffer_position: GlBuffer<'a>,
     // buffer_normal: GlBuffer<'a>,
+    triangle_vertices: Vec<Vector3<f32>>,
     num_primitives: usize,
 }
 
 impl<'a> HeightMapDrawer<'a> {
     pub fn new(gl: &'a opengl::Gl) -> Self {
         let program =
-            GlProgram::new(gl, VERTEX_SHADER_OUTLINED_BOX, FRAGMENT_SHADER_OUTLINED_BOX);
+            GlProgram::new(gl, HM_VERTEX_SHADER, HM_FRAGMENT_SHADER);
         let u_transform;
         let u_color;
 
@@ -56,15 +57,45 @@ impl<'a> HeightMapDrawer<'a> {
             u_transform = gl.GetUniformLocation(program.id, c_str!("transform"));
             u_color = gl.GetUniformLocation(program.id, c_str!("color"));
         }
+        println!("{}, {}", u_transform, u_color);
 
         let vertex_array = GlVertexArray::new(gl);
         vertex_array.bind();
 
         let buffer_position = GlBuffer::new_array_buffer(gl);
+        buffer_position.bind();
+
+        // //_buffer_position.bind();
+        // let mut v: Vec<Vector3<f32>> = Vec::new();
+        // v.push(Vector3::new(-50., 0.0, -50.));
+        // v.push(Vector3::new( 50., 0.0, -50.));
+        // v.push(Vector3::new( 50., 0.0,  50.));
+
+        let vertices: [[f32; 3]; 8] = [
+            [-100.0, -1.0, 100.0],  // vertices of front quad
+            [100.0, -1.0, 100.0],   //
+            [100.0, -1.0, 100.0],    //
+            [-1.0, 1.0, 1.0],   //
+            [-1.0, -1.0, -1.0], // vertices of back quad
+            [1.0, -1.0, -1.0],  //
+            [1.0, 1.0, -1.0],   //
+            [-1.0, 1.0, -1.0],  //
+        ];
+        unsafe {
+            gl.BufferData(
+                opengl::ARRAY_BUFFER,
+                (vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
+                //(v.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
+                //v.as_ptr() as *const c_void,
+                &vertices[0] as *const [f32; 3] as *const c_void,
+                opengl::STATIC_DRAW,
+            );
+        }
+
         // let buffer_normal = GlBuffer::new_array_buffer(gl);
 
         unsafe {
-            let pos_attr = gl.GetAttribLocation(program.id, c_str!("position"));
+            let pos_attr = gl.GetAttribLocation(program.id, c_str!("aPos"));
             gl.EnableVertexAttribArray(pos_attr as GLuint);
             gl.VertexAttribPointer(
                 pos_attr as GLuint,
@@ -88,6 +119,7 @@ impl<'a> HeightMapDrawer<'a> {
         }
 
         let num_primitives = 0;
+        let triangle_vertices = Vec::new();
 
         HeightMapDrawer {
             program,
@@ -96,6 +128,7 @@ impl<'a> HeightMapDrawer<'a> {
             vertex_array,
             buffer_position,
             //buffer_normal,
+            triangle_vertices,
             num_primitives,
         }
     }
@@ -104,17 +137,18 @@ impl<'a> HeightMapDrawer<'a> {
         (x + y * size) as usize
     }
 
-    pub fn load_proto(&mut self, gl: &'a opengl::Gl, height_map_file_name: String) {
+    pub fn load_proto(&mut self, height_map_file_name: String) {
+        println!("loading height map from {}", height_map_file_name);
         // read proto
         let ground_map_proto = {
             let mut data = Vec::new();
             File::open(&height_map_file_name).unwrap().read_to_end(&mut data).unwrap();
             protobuf::parse_from_reader::<proto::GroundMap>(&mut Cursor::new(data)).unwrap()
         };
-        let size = ground_map_proto.size;
-        let resolution_m = ground_map_proto.resolution_m as f32;
-        let origin_x = ground_map_proto.origin_x as f32;
-        let origin_y = ground_map_proto.origin_y as f32;
+        let size = 2;//ground_map_proto.size;
+        let resolution_m = 100.;//ground_map_proto.resolution_m as f32;
+        let origin_x = -50.;//ground_map_proto.origin_x as f32;
+        let origin_y = -50.;//ground_map_proto.origin_y as f32;
 
         // compute grid vertices
         let mut grid_vertices = Vec::new();
@@ -123,17 +157,18 @@ impl<'a> HeightMapDrawer<'a> {
             for x in 0..size {
                 let v = Vector3::new(
                     origin_x + (x as f32 * resolution_m),
-                    ground_map_proto.z[i] as f32,
+                    0., // ground_map_proto.z[i] as f32,
                     origin_y + (y as f32 * resolution_m),
                 );
                 grid_vertices.push(v);
                 i += 1;
             }
         }
+        println!("{:?}", grid_vertices);
 
         // compute triangle list
         let mut num_primitives = 0;
-        let mut triangle_vertices = Vec::new();
+        self.triangle_vertices = Vec::new();
         for y in 0..size-1 {
             for x in 0..size-1 {
                 // get vertices
@@ -143,38 +178,46 @@ impl<'a> HeightMapDrawer<'a> {
                 let v11 = grid_vertices[HeightMapDrawer::linear_index(x+1, y+1, size)];
 
                 // lower triangle
-                triangle_vertices.push(v00);
-                triangle_vertices.push(v10);
-                triangle_vertices.push(v11);
+                self.triangle_vertices.push(v00);
+                self.triangle_vertices.push(v10);
+                self.triangle_vertices.push(v11);
                 num_primitives += 1;
 
                 // upper triangle
-                triangle_vertices.push(v00);
-                triangle_vertices.push(v11);
-                triangle_vertices.push(v01);
+                self.triangle_vertices.push(v00);
+                self.triangle_vertices.push(v11);
+                self.triangle_vertices.push(v01);
                 num_primitives += 1;
             }
         }
         self.num_primitives = num_primitives;
+        println!("{:?}", self.triangle_vertices);
 
+        println!("number of triangles {}", self.triangle_vertices.len() / 3);
+
+        self.vertex_array.bind();
         self.buffer_position.bind();
         unsafe {
-            gl.BufferData(
+            self.program.gl.BufferData(
                 opengl::ARRAY_BUFFER,
-                (triangle_vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
-                triangle_vertices.as_ptr() as *const [f32; 3] as *const c_void,
+                (self.triangle_vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
+                self.triangle_vertices.as_ptr() /*as *const [f32; 3]*/ as *const c_void,
                 opengl::STATIC_DRAW,
             );
         }
     }
 
     pub fn draw(&self, world_to_gl: &Matrix4<f32>, color: &Color) {
-        if self.num_primitives == 0 {
-            return;
-        }
+        // if self.num_primitives == 0 {
+        //     return;
+        // }
+
         self.vertex_array.bind();
+        self.buffer_position.bind();
 
         unsafe {
+            self.program.gl.Disable(opengl::CULL_FACE);
+            self.program.gl.Disable(opengl::DEPTH_TEST);
             self.program.gl.UseProgram(self.program.id);
             self.program.gl.UniformMatrix4fv(
                 self.u_transform,
@@ -190,11 +233,10 @@ impl<'a> HeightMapDrawer<'a> {
                 color.blue,
                 color.alpha,
             );
-            self.program.gl.DrawElements(
+            self.program.gl.DrawArrays(
                 opengl::TRIANGLES,
-                self.num_primitives as i32,
-                opengl::UNSIGNED_INT,
-                ptr::null(),
+                0,
+                (self.triangle_vertices.len() / 3) as i32
             );
         }
     }
