@@ -122,7 +122,7 @@ impl BoxDrawer {
         let filled_u_color;
     
         unsafe {
-            gl::UseProgram(outlines_program.id);
+            gl::UseProgram(filled_program.id);
             filled_u_transform = gl::GetUniformLocation(filled_program.id, c_str!("transform"));
             filled_u_model_view_transform = gl::GetUniformLocation(filled_program.id, c_str!("modelViewTransform"));
             filled_u_color = gl::GetUniformLocation(filled_program.id, c_str!("color"));
