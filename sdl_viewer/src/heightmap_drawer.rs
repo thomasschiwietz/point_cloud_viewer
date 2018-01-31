@@ -70,7 +70,6 @@ impl<'a> HeightMapDrawer<'a> {
         unsafe {
             buffer_position.bind();
             let pos_attr = gl.GetAttribLocation(program.id, c_str!("aPos"));
-            println!("pos {}", pos_attr);
             gl.EnableVertexAttribArray(pos_attr as GLuint);
             gl.VertexAttribPointer(
                 pos_attr as GLuint,
@@ -85,7 +84,6 @@ impl<'a> HeightMapDrawer<'a> {
         unsafe {
             buffer_normal.bind();
             let normal_attr = gl.GetAttribLocation(program.id, c_str!("aNormal"));
-            println!("normal_attr {}", normal_attr);
             gl.EnableVertexAttribArray(normal_attr as GLuint);
             gl.VertexAttribPointer(
                 normal_attr as GLuint,
@@ -179,8 +177,8 @@ impl<'a> HeightMapDrawer<'a> {
                 triangle_normals.push(normal0);
                 triangle_normals.push(normal0);
                 //vertex_normals[HeightMapDrawer::linear_index(x, y, size)].push(normal0);
-                //vertex_normals[HeightMapDrawer::linear_index(x+1, y, size)].push(normal0);
-                //vertex_normals[HeightMapDrawer::linear_index(x+1, y+1, size)].push(normal0);
+                // vertex_normals[HeightMapDrawer::linear_index(x+1, y, size)].push(normal0);
+                // vertex_normals[HeightMapDrawer::linear_index(x+1, y+1, size)].push(normal0);
 
                 // upper triangle
                 triangle_vertices.push(v00);
