@@ -41,10 +41,8 @@ pub struct HeightMapDrawer<'a> {
     // Vertex array and buffers
     vertex_array: GlVertexArray<'a>,
     buffer_position: GlBuffer<'a>,
-    //buffer_indices: GlBuffer<'a>,
     // buffer_normal: GlBuffer<'a>,
-    triangle_vertices: Vec<Vector3<f32>>,
-    num_primitives: usize,
+    num_indices: usize,
 }
 
 impl<'a> HeightMapDrawer<'a> {
@@ -94,8 +92,7 @@ impl<'a> HeightMapDrawer<'a> {
             // );
         }
 
-        let num_primitives = 0;
-        let triangle_vertices = Vec::new();
+        let num_indices = 0;
 
         HeightMapDrawer {
             program,
@@ -104,10 +101,8 @@ impl<'a> HeightMapDrawer<'a> {
             u_color,
             vertex_array,
             buffer_position,
-            //buffer_indices,
             //buffer_normal,
-            triangle_vertices,
-            num_primitives,
+            num_indices,
         }
     }
 
@@ -136,7 +131,7 @@ impl<'a> HeightMapDrawer<'a> {
                 let v = Vector3::new(
                     origin_x + (x as f32 * resolution_m),
                     origin_y + (y as f32 * resolution_m),
-                    ground_map_proto.z[i] as f32,
+                    ground_map_proto.z[i] as f32 - 10.,
                 );
                 grid_vertices.push(v);
                 i += 1;
@@ -145,8 +140,7 @@ impl<'a> HeightMapDrawer<'a> {
         //println!("{:?}", grid_vertices);
 
         // compute triangle list
-        let mut num_primitives = 0;
-        self.triangle_vertices = Vec::new();
+        let mut triangle_vertices = Vec::new();
         for y in 0..size-1 {
             for x in 0..size-1 {
                 // get vertices
@@ -156,30 +150,28 @@ impl<'a> HeightMapDrawer<'a> {
                 let v11 = grid_vertices[HeightMapDrawer::linear_index(x+1, y+1, size)];
 
                 // lower triangle
-                self.triangle_vertices.push(v00);
-                self.triangle_vertices.push(v10);
-                self.triangle_vertices.push(v11);
-                num_primitives += 1;
+                triangle_vertices.push(v00);
+                triangle_vertices.push(v10);
+                triangle_vertices.push(v11);
 
                 // upper triangle
-                self.triangle_vertices.push(v00);
-                self.triangle_vertices.push(v11);
-                self.triangle_vertices.push(v01);
-                num_primitives += 1;
+                triangle_vertices.push(v00);
+                triangle_vertices.push(v11);
+                triangle_vertices.push(v01);
             }
         }
-        self.num_primitives = num_primitives;
+        self.num_indices = triangle_vertices.len();
         //println!("{:?}", self.triangle_vertices);
 
-        println!("number of triangles {}", self.triangle_vertices.len() / 3);
+        println!("number of triangles {}", self.num_indices / 3);
 
         self.vertex_array.bind();
         self.buffer_position.bind();
         unsafe {
             self.program.gl.BufferData(
                 opengl::ARRAY_BUFFER,
-                (self.triangle_vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
-                self.triangle_vertices.as_ptr() as *const c_void,
+                (triangle_vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
+                triangle_vertices.as_ptr() as *const c_void,
                 opengl::STATIC_DRAW,
             );
         }
@@ -193,7 +185,7 @@ impl<'a> HeightMapDrawer<'a> {
             self.program.gl.UniformMatrix4fv(self.u_transform, 1, false as GLboolean, world_to_gl.as_ptr());
             self.program.gl.UniformMatrix4fv(self.u_model_view_transform, 1, false as GLboolean, world_to_view.as_ptr());
             self.program.gl.Uniform4fv(self.u_color, 1, color.as_ptr());
-            self.program.gl.DrawArrays(opengl::TRIANGLES, 0, self.triangle_vertices.len() as i32);
+            self.program.gl.DrawArrays(opengl::TRIANGLES, 0, self.num_indices as i32);
         }
     }
 }
