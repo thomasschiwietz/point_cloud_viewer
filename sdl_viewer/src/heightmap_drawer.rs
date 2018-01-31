@@ -17,7 +17,6 @@ use color::Color;
 use graphic::{GlBuffer, GlProgram, GlVertexArray};
 use opengl;
 use opengl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
-use point_viewer::math::Cube;
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
@@ -28,8 +27,8 @@ use proto;
 use std::fs::File;
 use std::io::{Cursor, Read};
 
-const FRAGMENT_SHADER_OUTLINED_BOX: &str = include_str!("../shaders/box_drawer_outline.fs");
-const VERTEX_SHADER_OUTLINED_BOX: &str = include_str!("../shaders/box_drawer_outline.vs");
+const FRAGMENT_SHADER_OUTLINED_BOX: &str = include_str!("../shaders/heightmap.fs");
+const VERTEX_SHADER_OUTLINED_BOX: &str = include_str!("../shaders/heightmap.vs");
 
 pub struct HeightMapDrawer<'a> {
     program: GlProgram<'a>,
@@ -160,8 +159,7 @@ impl<'a> HeightMapDrawer<'a> {
         }
     }
 
-    // Draws the outline of the box where each vertex is transformed with 'transform'.
-    fn draw_outlines_from_transformation(&self, transform: &Matrix4<f32>, color: &Color) {
+    pub fn draw(&self, world_to_gl: &Matrix4<f32>, color: &Color) {
         self.vertex_array.bind();
 
         unsafe {
@@ -170,7 +168,7 @@ impl<'a> HeightMapDrawer<'a> {
                 self.u_transform,
                 1,
                 false as GLboolean,
-                transform.as_ptr(),
+                world_to_gl.as_ptr(),
             );
             self.program.gl.Uniform4f(
                 self.u_color,
@@ -186,21 +184,5 @@ impl<'a> HeightMapDrawer<'a> {
                 ptr::null(),
             );
         }
-    }
-
-    // Draws the outline of 'cube' using 'color'.
-    // Internally, the box is defined in local coordinates.
-    // We the properties of 'cube' to transform the box into world space.
-    // Then we use 'world_to_gl' to transform it into clip space.
-    pub fn draw_outlines(&self, cube: &Cube, world_to_gl: &Matrix4<f32>, color: &Color) {
-        let scale_matrix = Matrix4::from_scale(cube.edge_length() / 2.0);
-        let translation_matrix = Matrix4::from_translation(cube.center());
-        let transformation_matrix = world_to_gl * translation_matrix * scale_matrix;
-
-        self.draw_outlines_from_transformation(&transformation_matrix, color);
-    }
-
-    pub fn draw(&self, world_to_gl: &Matrix4<f32>, color: &Color) {
-        self.draw_outlines_from_transformation(world_to_gl, color);
     }
 }
