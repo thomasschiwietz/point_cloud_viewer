@@ -40,7 +40,6 @@ pub mod opengl {
 include!(concat!(env!("OUT_DIR"), "/proto.rs"));
 
 pub mod box_drawer;
-pub mod boxdrawer2;
 pub mod heightmap_drawer;
 pub mod color;
 // TODO(thomasschiwietz): Use 'Color' in the 'Point' struct in src/lib.rs (top level crate)
@@ -183,8 +182,6 @@ impl SdlViewer {
         let box_drawer = BoxDrawer::new(&gl);
         let octree_box_color = YELLOW;
         let mut show_octree_nodes = false;
-
-        let box_drawer2 = boxdrawer2::BoxDrawer2::new(&gl);
 
         let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
         if !maybe_height_map_file_name.is_none() {           
