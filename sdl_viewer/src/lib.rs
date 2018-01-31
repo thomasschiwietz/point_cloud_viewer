@@ -47,7 +47,6 @@ pub mod color;
 pub mod graphic;
 pub mod node_drawer;
 
-use cgmath::{Array, Matrix, Matrix4};
 use box_drawer::BoxDrawer;
 use camera::Camera;
 use color::YELLOW;

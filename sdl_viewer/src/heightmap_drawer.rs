@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use cgmath::{InnerSpace, Matrix, Matrix4, Vector3};
-use color::Color;
+// use color::Color;
 use graphic::{GlBuffer, GlProgram, GlVertexArray};
 use opengl;
 use opengl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
