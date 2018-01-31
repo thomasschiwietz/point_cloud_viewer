@@ -187,9 +187,9 @@ impl SdlViewer {
         let box_drawer2 = boxdrawer2::BoxDrawer2::new(&gl);
 
         let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
-        // if !maybe_height_map_file_name.is_none() {           
-        //     height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string());
-        // }
+        if !maybe_height_map_file_name.is_none() {           
+            height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string());
+        }
 
         let mut camera = Camera::new(&gl, WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -315,13 +315,11 @@ impl SdlViewer {
                 }
             }
 
-            let c2 = vec![1., 1., 0., 1.];
-            let mx_scale = Matrix4::from_scale(100.);
-            let mx = &camera.get_world_to_gl() * mx_scale;
-            box_drawer2.draw_filled(&c2, &camera.get_world_to_camera(), &mx);
+            let color2 = vec![1.,1.,0.,1.];
+            // let mx_local_to_gl = camera.get_world_to_gl() * Matrix4::from_scale(4.0);
+            // box_drawer2.draw_filled(&color2, &camera.get_world_to_camera(), &mx_local_to_gl);
 
-            let color = YELLOW;
-            height_map_drawer.draw(&camera.get_world_to_gl(), &color);
+            height_map_drawer.draw(&color2, &camera.get_world_to_camera(), &camera.get_world_to_gl());
 
             window.gl_swap_window();
             num_frames += 1;

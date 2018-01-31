@@ -35,11 +35,13 @@ pub struct HeightMapDrawer<'a> {
 
     // Uniforms locations.
     u_transform: GLint,
+    u_model_view_transform: GLint,
     u_color: GLint,
 
     // Vertex array and buffers
     vertex_array: GlVertexArray<'a>,
     buffer_position: GlBuffer<'a>,
+    //buffer_indices: GlBuffer<'a>,
     // buffer_normal: GlBuffer<'a>,
     triangle_vertices: Vec<Vector3<f32>>,
     num_primitives: usize,
@@ -50,47 +52,21 @@ impl<'a> HeightMapDrawer<'a> {
         let program =
             GlProgram::new(gl, HM_VERTEX_SHADER, HM_FRAGMENT_SHADER);
         let u_transform;
+        let u_model_view_transform;
         let u_color;
 
         unsafe {
             gl.UseProgram(program.id);
             u_transform = gl.GetUniformLocation(program.id, c_str!("transform"));
+            u_model_view_transform = gl.GetUniformLocation(program.id, c_str!("modelViewTransform"));
             u_color = gl.GetUniformLocation(program.id, c_str!("color"));
         }
-        println!("{}, {}", u_transform, u_color);
 
         let vertex_array = GlVertexArray::new(gl);
         vertex_array.bind();
 
         let buffer_position = GlBuffer::new_array_buffer(gl);
         buffer_position.bind();
-
-        // //_buffer_position.bind();
-        // let mut v: Vec<Vector3<f32>> = Vec::new();
-        // v.push(Vector3::new(-50., 0.0, -50.));
-        // v.push(Vector3::new( 50., 0.0, -50.));
-        // v.push(Vector3::new( 50., 0.0,  50.));
-
-        let vertices: [[f32; 3]; 8] = [
-            [-100.0, -1.0, 100.0],  // vertices of front quad
-            [100.0, -1.0, 100.0],   //
-            [100.0, -1.0, 100.0],    //
-            [-1.0, 1.0, 1.0],   //
-            [-1.0, -1.0, -1.0], // vertices of back quad
-            [1.0, -1.0, -1.0],  //
-            [1.0, 1.0, -1.0],   //
-            [-1.0, 1.0, -1.0],  //
-        ];
-        unsafe {
-            gl.BufferData(
-                opengl::ARRAY_BUFFER,
-                (vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
-                //(v.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
-                //v.as_ptr() as *const c_void,
-                &vertices[0] as *const [f32; 3] as *const c_void,
-                opengl::STATIC_DRAW,
-            );
-        }
 
         // let buffer_normal = GlBuffer::new_array_buffer(gl);
 
@@ -124,9 +100,11 @@ impl<'a> HeightMapDrawer<'a> {
         HeightMapDrawer {
             program,
             u_transform,
+            u_model_view_transform,
             u_color,
             vertex_array,
             buffer_position,
+            //buffer_indices,
             //buffer_normal,
             triangle_vertices,
             num_primitives,
@@ -145,10 +123,10 @@ impl<'a> HeightMapDrawer<'a> {
             File::open(&height_map_file_name).unwrap().read_to_end(&mut data).unwrap();
             protobuf::parse_from_reader::<proto::GroundMap>(&mut Cursor::new(data)).unwrap()
         };
-        let size = 2;//ground_map_proto.size;
-        let resolution_m = 100.;//ground_map_proto.resolution_m as f32;
-        let origin_x = -50.;//ground_map_proto.origin_x as f32;
-        let origin_y = -50.;//ground_map_proto.origin_y as f32;
+        let size = ground_map_proto.size;
+        let resolution_m = ground_map_proto.resolution_m as f32;
+        let origin_x = ground_map_proto.origin_x as f32;
+        let origin_y = ground_map_proto.origin_y as f32;
 
         // compute grid vertices
         let mut grid_vertices = Vec::new();
@@ -157,14 +135,14 @@ impl<'a> HeightMapDrawer<'a> {
             for x in 0..size {
                 let v = Vector3::new(
                     origin_x + (x as f32 * resolution_m),
-                    0., // ground_map_proto.z[i] as f32,
                     origin_y + (y as f32 * resolution_m),
+                    ground_map_proto.z[i] as f32,
                 );
                 grid_vertices.push(v);
                 i += 1;
             }
         }
-        println!("{:?}", grid_vertices);
+        //println!("{:?}", grid_vertices);
 
         // compute triangle list
         let mut num_primitives = 0;
@@ -191,7 +169,7 @@ impl<'a> HeightMapDrawer<'a> {
             }
         }
         self.num_primitives = num_primitives;
-        println!("{:?}", self.triangle_vertices);
+        //println!("{:?}", self.triangle_vertices);
 
         println!("number of triangles {}", self.triangle_vertices.len() / 3);
 
@@ -201,43 +179,21 @@ impl<'a> HeightMapDrawer<'a> {
             self.program.gl.BufferData(
                 opengl::ARRAY_BUFFER,
                 (self.triangle_vertices.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
-                self.triangle_vertices.as_ptr() /*as *const [f32; 3]*/ as *const c_void,
+                self.triangle_vertices.as_ptr() as *const c_void,
                 opengl::STATIC_DRAW,
             );
         }
     }
 
-    pub fn draw(&self, world_to_gl: &Matrix4<f32>, color: &Color) {
-        // if self.num_primitives == 0 {
-        //     return;
-        // }
-
+    pub fn draw(&self, color: &Vec<f32>, world_to_view: &Matrix4<f32>, world_to_gl: &Matrix4<f32>) {
         self.vertex_array.bind();
-        self.buffer_position.bind();
 
         unsafe {
-            self.program.gl.Disable(opengl::CULL_FACE);
-            self.program.gl.Disable(opengl::DEPTH_TEST);
             self.program.gl.UseProgram(self.program.id);
-            self.program.gl.UniformMatrix4fv(
-                self.u_transform,
-                1,
-                false as GLboolean,
-                world_to_gl.as_ptr(),
-            );
-            // gl::UniformMatrix4fv(self.filled_u_model_view_transform, 1, false as GLboolean, world_to_view.as_ptr());
-            self.program.gl.Uniform4f(
-                self.u_color,
-                color.red,
-                color.green,
-                color.blue,
-                color.alpha,
-            );
-            self.program.gl.DrawArrays(
-                opengl::TRIANGLES,
-                0,
-                (self.triangle_vertices.len() / 3) as i32
-            );
+            self.program.gl.UniformMatrix4fv(self.u_transform, 1, false as GLboolean, world_to_gl.as_ptr());
+            self.program.gl.UniformMatrix4fv(self.u_model_view_transform, 1, false as GLboolean, world_to_view.as_ptr());
+            self.program.gl.Uniform4fv(self.u_color, 1, color.as_ptr());
+            self.program.gl.DrawArrays(opengl::TRIANGLES, 0, self.triangle_vertices.len() as i32);
         }
     }
 }

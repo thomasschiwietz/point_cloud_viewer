@@ -57,37 +57,12 @@ impl<'a> BoxDrawer2<'a> {
         // vertex buffer for filled box
         let _filled_buffer_position = GlBuffer::new_array_buffer(gl);
         _filled_buffer_position.bind();
-        let per_face_vertices: [f32; 3*4*6] = [
-	        // front
-            -1.0, -1.0, 1.0,
-            1.0, -1.0, 1.0,
-            1.0, 1.0, 1.0,
-            -1.0, 1.0, 1.0,
-            // back
-            1.0, -1.0, -1.0,
-            -1.0, -1.0, -1.0,
-            -1.0, 1.0, -1.0,
-            1.0, 1.0, -1.0,
-            // right
-            1.0, -1.0, 1.0,
-            1.0, -1.0, -1.0,
-            1.0, 1.0, -1.0,
-            1.0, 1.0, 1.0,
-            // left
-            -1.0, -1.0, -1.0,
-            -1.0, -1.0, 1.0,
-            -1.0, 1.0, 1.0,
-            -1.0, 1.0, -1.0,
+        let per_face_vertices: [f32; 3*4] = [
             // top
-            -1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0,
-            1.0, 1.0, -1.0,
-            -1.0, 1.0, -1.0,
-            // bottom
-            1.0, -1.0, 1.0,
-            -1.0, -1.0, 1.0,
-            -1.0, -1.0, -1.0,
-            1.0, -1.0, -1.0,
+            -1.0, 1.0, 0.0,
+            1.0, 1.0, 0.0, 
+            1.0, -1.0, 0.0, 
+            -1.0, -1.0, 0.0,
         ];
         unsafe {
             gl.BufferData(
@@ -114,37 +89,11 @@ impl<'a> BoxDrawer2<'a> {
         // vertex buffer for filled box: normals
         let _filled_buffer_normals = GlBuffer::new_array_buffer(gl);
         _filled_buffer_normals.bind();
-        let per_face_vertex_normals: [f32; 3*4*6] = [
-	        // front
+        let per_face_vertex_normals: [f32; 3*4] = [
             0.0, 0.0, 1.0,
             0.0, 0.0, 1.0,
             0.0, 0.0, 1.0,
             0.0, 0.0, 1.0,
-            // back
-            0.0, 0.0, -1.0,
-            0.0, 0.0, -1.0,
-            0.0, 0.0, -1.0,
-            0.0, 0.0, -1.0,
-            // right
-            1.0, 0.0, 0.0,
-            1.0, 0.0, 0.0,
-            1.0, 0.0, 0.0,
-            1.0, 0.0, 0.0,
-            // left
-            -1.0, 0.0, 0.0,
-            -1.0, 0.0, 0.0,
-            -1.0, 0.0, 0.0,
-            -1.0, 0.0, 0.0,
-            // top
-            0.0, 1.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 1.0, 0.0,
-            // bottom
-            0.0, -1.0, 0.0,
-            0.0, -1.0, 0.0,
-            0.0, -1.0, 0.0,
-            0.0, -1.0, 0.0,
         ];
         unsafe {
             gl.BufferData(
@@ -171,10 +120,10 @@ impl<'a> BoxDrawer2<'a> {
         // define index buffer for 24 edges of the box
         let _filled_buffer_indices = GlBuffer::new_element_array_buffer(gl);
         _filled_buffer_indices.bind();
-        let mut filled_indices: [i32; 6*6] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-        for i in 0..6 {
-            let o = 6 * i;
-            let v = 4 * i as i32;
+        let mut filled_indices: [i32; 6] = [0,0,0,0,0,0];
+        // for i in 0..6 {
+            let o = 0;//6 * i;
+            let v = 0;//4 * i as i32;
 
             filled_indices[o + 0] = v + 0;
             filled_indices[o + 1] = v + 1;
@@ -183,7 +132,7 @@ impl<'a> BoxDrawer2<'a> {
             filled_indices[o + 3] = v + 2;
             filled_indices[o + 4] = v + 3;
             filled_indices[o + 5] = v + 0;
-        }
+        //}
         unsafe {
             gl.BufferData(
                 opengl::ELEMENT_ARRAY_BUFFER,
@@ -213,7 +162,8 @@ impl<'a> BoxDrawer2<'a> {
             self.filled_program.gl.UniformMatrix4fv(self.filled_u_transform, 1, false as GLboolean, world_to_gl.as_ptr());
             self.filled_program.gl.UniformMatrix4fv(self.filled_u_model_view_transform, 1, false as GLboolean, world_to_view.as_ptr());
             self.filled_program.gl.Uniform4fv(self.filled_u_color, 1, color.as_ptr());
-            self.filled_program.gl.DrawElements(opengl::TRIANGLES, 6*6, opengl::UNSIGNED_INT, ptr::null());
+            self.filled_program.gl.DrawElements(opengl::TRIANGLES, 6, opengl::UNSIGNED_INT, ptr::null());
+            // self.filled_program.gl.DrawArrays(opengl::TRIANGLES, 0, 2);
         }
     }
 }
