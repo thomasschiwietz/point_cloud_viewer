@@ -41,7 +41,7 @@ pub struct HeightMapDrawer<'a> {
     // Vertex array and buffers
     vertex_array: GlVertexArray<'a>,
     buffer_position: GlBuffer<'a>,
-    // buffer_normal: GlBuffer<'a>,
+    buffer_normal: GlBuffer<'a>,
     num_indices: usize,
 }
 
@@ -64,12 +64,13 @@ impl<'a> HeightMapDrawer<'a> {
         vertex_array.bind();
 
         let buffer_position = GlBuffer::new_array_buffer(gl);
-        buffer_position.bind();
 
-        // let buffer_normal = GlBuffer::new_array_buffer(gl);
+        let buffer_normal = GlBuffer::new_array_buffer(gl);
 
         unsafe {
+            buffer_position.bind();
             let pos_attr = gl.GetAttribLocation(program.id, c_str!("aPos"));
+            println!("pos {}", pos_attr);
             gl.EnableVertexAttribArray(pos_attr as GLuint);
             gl.VertexAttribPointer(
                 pos_attr as GLuint,
@@ -79,17 +80,21 @@ impl<'a> HeightMapDrawer<'a> {
                 3 * mem::size_of::<f32>() as i32,
                 ptr::null(),
             );
+        }
 
-            // let normal_attr = gl.GetAttribLocation(program.id, c_str!("normal"));
-            // gl.EnableVertexAttribArray(normal_attr as GLuint);
-            // gl.VertexAttribPointer(
-            //     pos_attr as GLuint,
-            //     3,
-            //     opengl::FLOAT,
-            //     opengl::FALSE,
-            //     3 * mem::size_of::<f32>() as i32,
-            //     ptr::null(),
-            // );
+        unsafe {
+            buffer_normal.bind();
+            let normal_attr = gl.GetAttribLocation(program.id, c_str!("aNormal"));
+            println!("normal_attr {}", normal_attr);
+            gl.EnableVertexAttribArray(normal_attr as GLuint);
+            gl.VertexAttribPointer(
+                normal_attr as GLuint,
+                3,
+                opengl::FLOAT,
+                opengl::FALSE,
+                3 * mem::size_of::<f32>() as i32,
+                ptr::null(),
+            );
         }
 
         let num_indices = 0;
@@ -101,13 +106,17 @@ impl<'a> HeightMapDrawer<'a> {
             u_color,
             vertex_array,
             buffer_position,
-            //buffer_normal,
+            buffer_normal,
             num_indices,
         }
     }
 
     fn linear_index(x: i32, y: i32, size: i32) -> usize {
         (x + y * size) as usize
+    }
+
+    fn compute_normal(v0: &Vector3<f32>, v1: &Vector3<f32>, v2: &Vector3<f32>) -> Vector3<f32> {
+        Vector3::new(0., 0., 1.)
     }
 
     pub fn load_proto(&mut self, height_map_file_name: String) {
@@ -141,6 +150,7 @@ impl<'a> HeightMapDrawer<'a> {
 
         // compute triangle list
         let mut triangle_vertices = Vec::new();
+        let mut triangle_normals = Vec::new();
         for y in 0..size-1 {
             for x in 0..size-1 {
                 // get vertices
@@ -153,19 +163,28 @@ impl<'a> HeightMapDrawer<'a> {
                 triangle_vertices.push(v00);
                 triangle_vertices.push(v10);
                 triangle_vertices.push(v11);
+                let normal0 = HeightMapDrawer::compute_normal(&v00, &v10, &v11);
+                triangle_normals.push(normal0);
+                triangle_normals.push(normal0);
+                triangle_normals.push(normal0);
 
                 // upper triangle
                 triangle_vertices.push(v00);
                 triangle_vertices.push(v11);
                 triangle_vertices.push(v01);
+                let normal1 = HeightMapDrawer::compute_normal(&v00, &v11, &v01);
+                triangle_normals.push(normal1);
+                triangle_normals.push(normal1);
+                triangle_normals.push(normal1);
             }
         }
         self.num_indices = triangle_vertices.len();
         //println!("{:?}", self.triangle_vertices);
 
-        println!("number of triangles {}", self.num_indices / 3);
+        println!("number of triangles {} / {}", self.num_indices / 3, triangle_normals.len() / 3);
 
         self.vertex_array.bind();
+
         self.buffer_position.bind();
         unsafe {
             self.program.gl.BufferData(
@@ -175,6 +194,17 @@ impl<'a> HeightMapDrawer<'a> {
                 opengl::STATIC_DRAW,
             );
         }
+
+        self.buffer_normal.bind();
+        unsafe {
+            self.program.gl.BufferData(
+                opengl::ARRAY_BUFFER,
+                (triangle_normals.len() * 3 * mem::size_of::<f32>()) as GLsizeiptr,
+                triangle_normals.as_ptr() as *const c_void,
+                opengl::STATIC_DRAW,
+            );
+        }
+
     }
 
     pub fn draw(&self, color: &Vec<f32>, world_to_view: &Matrix4<f32>, world_to_gl: &Matrix4<f32>) {
