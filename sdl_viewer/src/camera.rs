@@ -80,6 +80,11 @@ impl Camera {
         }
     }
 
+    pub fn get_world_to_camera(&self) -> Matrix4<f32> {
+        let world_to_camera: Matrix4<f32> = self.transform.inverse_transform().unwrap().into();
+        world_to_camera
+    }
+
     pub fn get_world_to_gl(&self) -> Matrix4<f32> {
         let world_to_camera: Matrix4<f32> = self.transform.inverse_transform().unwrap().into();
         self.projection_matrix * world_to_camera

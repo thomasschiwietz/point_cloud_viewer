@@ -40,6 +40,7 @@ pub mod opengl {
 include!(concat!(env!("OUT_DIR"), "/proto.rs"));
 
 pub mod box_drawer;
+pub mod boxdrawer2;
 pub mod heightmap_drawer;
 pub mod color;
 // TODO(thomasschiwietz): Use 'Color' in the 'Point' struct in src/lib.rs (top level crate)
@@ -47,6 +48,7 @@ pub mod color;
 pub mod graphic;
 pub mod node_drawer;
 
+use cgmath::{Array, Matrix, Matrix4};
 use box_drawer::BoxDrawer;
 use camera::Camera;
 use color::YELLOW;
@@ -182,6 +184,8 @@ impl SdlViewer {
         let octree_box_color = YELLOW;
         let mut show_octree_nodes = false;
 
+        let box_drawer2 = boxdrawer2::BoxDrawer2::new(&gl);
+
         let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
         // if !maybe_height_map_file_name.is_none() {           
         //     height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string());
@@ -311,8 +315,12 @@ impl SdlViewer {
                 }
             }
 
+            let c2 = vec![1., 1., 0., 1.];
+            let mx_scale = Matrix4::from_scale(100.);
+            let mx = &camera.get_world_to_gl() * mx_scale;
+            box_drawer2.draw_filled(&c2, &camera.get_world_to_camera(), &mx);
+
             let color = YELLOW;
-            
             height_map_drawer.draw(&camera.get_world_to_gl(), &color);
 
             window.gl_swap_window();
