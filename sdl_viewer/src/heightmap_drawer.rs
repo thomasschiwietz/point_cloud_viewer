@@ -142,7 +142,7 @@ impl<'a> HeightMapDrawer<'a> {
                     origin_x + (x as f32 * resolution_m),
                     origin_y + (y as f32 * resolution_m),
                     // f32::sin(x as f32 / (0.25 * size as f32) * y as f32 / (0.25 * size as f32)) + 50.
-                    ground_map_proto.z[i] as f32 + 50.,
+                    ground_map_proto.z[i] as f32,
                 );
                 grid_vertices.push(v);
                 i += 1;
