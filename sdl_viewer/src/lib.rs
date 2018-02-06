@@ -149,8 +149,8 @@ impl SdlViewer {
         gl_attr.set_context_profile(GLProfile::Core);
         gl_attr.set_context_version(3, 2);
 
-        const WINDOW_WIDTH: i32 = 800;
-        const WINDOW_HEIGHT: i32 = 600;
+        const WINDOW_WIDTH: i32 = 800 * 2;
+        const WINDOW_HEIGHT: i32 = 600 * 2;
         let window = match video_subsystem
             .window("sdl2_viewer", WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
             .position_centered()
