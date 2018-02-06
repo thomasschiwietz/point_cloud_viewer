@@ -195,9 +195,10 @@ impl SdlViewer {
         let mut force_load_all = false;
         let mut use_level_of_detail;
         let mut point_size = 2.;
-        let mut gamma = 1.;
+        let mut gamma = 2.;
 
         let mut show_points = true;
+        let mut show_heightmap = true;
 
         'outer_loop: loop {
             for event in events.poll_iter() {
@@ -217,6 +218,7 @@ impl SdlViewer {
                         Scancode::F => force_load_all = true,
                         Scancode::O => show_octree_nodes = !show_octree_nodes,
                         Scancode::Num1 => show_points = !show_points,
+                        Scancode::Num2 => show_heightmap = !show_heightmap,
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
@@ -320,7 +322,9 @@ impl SdlViewer {
             // let mx_local_to_gl = camera.get_world_to_gl() * Matrix4::from_scale(4.0);
             // box_drawer2.draw_filled(&color2, &camera.get_world_to_camera(), &mx_local_to_gl);
 
-            height_map_drawer.draw(&color2, &camera.get_world_to_camera(), &camera.get_world_to_gl());
+            if show_heightmap {
+                height_map_drawer.draw(&color2, &camera.get_world_to_camera(), &camera.get_world_to_gl());
+            }
 
             window.gl_swap_window();
             num_frames += 1;
