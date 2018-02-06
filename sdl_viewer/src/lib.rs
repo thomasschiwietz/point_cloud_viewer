@@ -197,6 +197,8 @@ impl SdlViewer {
         let mut point_size = 2.;
         let mut gamma = 1.;
 
+        let mut show_points = true;
+
         'outer_loop: loop {
             for event in events.poll_iter() {
                 match event {
@@ -214,6 +216,7 @@ impl SdlViewer {
                         Scancode::Q => camera.moving_up = true,
                         Scancode::F => force_load_all = true,
                         Scancode::O => show_octree_nodes = !show_octree_nodes,
+                        Scancode::Num1 => show_points = !show_points,
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,
@@ -281,31 +284,33 @@ impl SdlViewer {
                 gl.ClearColor(0., 0., 0., 1.);
                 gl.Clear(opengl::COLOR_BUFFER_BIT | opengl::DEPTH_BUFFER_BIT);
 
-                for visible_node in &visible_nodes {
-                    // TODO(sirver): Track a point budget here when moving, so that FPS never drops too
-                    // low.
-                    if let Some(view) =
-                        node_views.get_or_request(&visible_node.id, &node_drawer.program)
-                    {
-                        num_points_drawn += node_drawer.draw(
-                            view,
-                            if use_level_of_detail {
-                                visible_node.level_of_detail
-                            } else {
-                                1
-                            },
-                            point_size,
-                            gamma,
-                        );
-                        num_nodes_drawn += 1;
-
-                        // debug drawer
-                        if show_octree_nodes {
-                            box_drawer.draw_outlines(
-                                &view.meta.bounding_cube,
-                                &camera.get_world_to_gl(),
-                                &octree_box_color,
+                if show_points {
+                    for visible_node in &visible_nodes {
+                        // TODO(sirver): Track a point budget here when moving, so that FPS never drops too
+                        // low.
+                        if let Some(view) =
+                            node_views.get_or_request(&visible_node.id, &node_drawer.program)
+                        {
+                            num_points_drawn += node_drawer.draw(
+                                view,
+                                if use_level_of_detail {
+                                    visible_node.level_of_detail
+                                } else {
+                                    1
+                                },
+                                point_size,
+                                gamma,
                             );
+                            num_nodes_drawn += 1;
+
+                            // debug drawer
+                            if show_octree_nodes {
+                                box_drawer.draw_outlines(
+                                    &view.meta.bounding_cube,
+                                    &camera.get_world_to_gl(),
+                                    &octree_box_color,
+                                );
+                            }
                         }
                     }
                 }
