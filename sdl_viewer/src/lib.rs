@@ -182,9 +182,10 @@ impl SdlViewer {
         let octree_box_color = YELLOW;
         let mut show_octree_nodes = false;
 
+        let mut current_height_index = 0;
         let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
         if !maybe_height_map_file_name.is_none() {           
-            height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string());
+            height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string(), 0);
         }
 
         let mut camera = Camera::new(&gl, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -219,6 +220,8 @@ impl SdlViewer {
                         Scancode::O => show_octree_nodes = !show_octree_nodes,
                         Scancode::Num1 => show_points = !show_points,
                         Scancode::Num2 => show_heightmap = !show_heightmap,
+                        Scancode::Num3 => { current_height_index -= 100; height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string(), current_height_index); },
+                        Scancode::Num4 => { current_height_index += 100; height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string(), current_height_index); },
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,

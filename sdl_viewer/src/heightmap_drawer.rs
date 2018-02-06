@@ -120,12 +120,18 @@ impl<'a> HeightMapDrawer<'a> {
         -n.normalize()
     }
 
-    pub fn load_proto(&mut self, height_map_file_name: String) {
-        println!("loading height map from {}", height_map_file_name);
+    pub fn load_proto(&mut self, height_map_file_name: String, index: i32) {
         // read proto
+        if index < 0 {
+            return;
+        }
+        let file_name = format!("{}{:06}.pb", height_map_file_name, index);
+
+        println!("loading height map {}", file_name);
+
         let ground_map_proto = {
             let mut data = Vec::new();
-            File::open(&height_map_file_name).unwrap().read_to_end(&mut data).unwrap();
+            File::open(&file_name).unwrap().read_to_end(&mut data).unwrap();
             protobuf::parse_from_reader::<proto::GroundMap>(&mut Cursor::new(data)).unwrap()
         };
         let size = ground_map_proto.size;
