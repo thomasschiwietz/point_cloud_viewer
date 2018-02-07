@@ -57,6 +57,7 @@ use sdl2::keyboard::Scancode;
 use sdl2::video::GLProfile;
 use std::cmp;
 use std::collections::HashMap;
+use std::fs;
 use std::error::Error;
 use std::sync::Arc;
 
@@ -79,6 +80,31 @@ impl SdlViewer {
     pub fn register_octree_factory(mut self, prefix: String, function: OctreeFactory) -> SdlViewer {
         self.octree_factories.insert(prefix, function);
         self
+    }
+
+    fn load_next_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, current_index: i32, direction: i32) -> i32 {
+        let mut index = current_index;
+        loop {
+            index += direction;
+            if index < 0 {
+                index = 0;
+                break;
+            }
+            let file_name = SdlViewer::get_height_map_file_name(&file_name, index);
+            if !fs::metadata(file_name).is_err() {
+                break;
+            }
+        }
+        SdlViewer::load_height_map(drawer, file_name, index);
+        index
+    }
+
+    fn get_height_map_file_name(file_name: &String, index: i32) -> String {
+        format!("{}{:06}.pb", file_name, index)
+    }
+
+    fn load_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, index: i32) {
+        drawer.load_proto(SdlViewer::get_height_map_file_name(&file_name, index));
     }
 
     pub fn run(self) {
@@ -184,8 +210,8 @@ impl SdlViewer {
 
         let mut current_height_index = 0;
         let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
-        if !maybe_height_map_file_name.is_none() {           
-            height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string(), 0);
+        if !maybe_height_map_file_name.is_none() {
+            SdlViewer::load_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), 0);
         }
 
         let mut camera = Camera::new(&gl, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -220,8 +246,8 @@ impl SdlViewer {
                         Scancode::O => show_octree_nodes = !show_octree_nodes,
                         Scancode::Num1 => show_points = !show_points,
                         Scancode::Num2 => show_heightmap = !show_heightmap,
-                        Scancode::Num3 => { current_height_index -= 100; height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string(), current_height_index); },
-                        Scancode::Num4 => { current_height_index += 100; height_map_drawer.load_proto(maybe_height_map_file_name.unwrap().to_string(), current_height_index); },
+                        Scancode::Num3 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index, -1); },
+                        Scancode::Num4 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index,  1); },
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,

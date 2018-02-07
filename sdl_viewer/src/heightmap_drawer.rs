@@ -120,13 +120,7 @@ impl<'a> HeightMapDrawer<'a> {
         -n.normalize()
     }
 
-    pub fn load_proto(&mut self, height_map_file_name: String, index: i32) {
-        // read proto
-        if index < 0 {
-            return;
-        }
-        let file_name = format!("{}{:06}.pb", height_map_file_name, index);
-
+    pub fn load_proto(&mut self, file_name: String) {
         println!("loading height map {}", file_name);
 
         let ground_map_proto = {
