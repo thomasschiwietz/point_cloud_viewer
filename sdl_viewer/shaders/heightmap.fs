@@ -10,5 +10,6 @@ void main()
 {
     vec3 lightDir = vec3(0,0,1);
     float diff = max(dot(normal, lightDir), 0.0);
-    FragColor = diff * color;
+    float ambient = 0.5;
+    FragColor = color * (ambient + (1. - ambient) * diff);
 }
