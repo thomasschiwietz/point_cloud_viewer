@@ -84,15 +84,22 @@ impl SdlViewer {
 
     fn load_next_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, current_index: i32, direction: i32) -> i32 {
         let mut index = current_index;
+        let mut loop_count = 0;
         loop {
             index += direction;
             if index < 0 {
+                println!("no height map found before index 0");
                 index = 0;
                 break;
             }
             let file_name = SdlViewer::get_height_map_file_name(&file_name, index);
             if !fs::metadata(file_name).is_err() {
                 break;
+            }
+            loop_count += 1;
+            if loop_count > 500 {
+                println!("no height map found after index {}", current_index);
+                return current_index
             }
         }
         SdlViewer::load_height_map(drawer, file_name, index);
