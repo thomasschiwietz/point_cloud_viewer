@@ -82,7 +82,7 @@ impl SdlViewer {
         self
     }
 
-    fn load_next_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, current_index: i32, direction: i32) -> i32 {
+    fn load_next_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, current_index: i32, direction: i32, use_vertex_normals: bool) -> i32 {
         let mut index = current_index;
         let mut loop_count = 0;
         loop {
@@ -102,7 +102,7 @@ impl SdlViewer {
                 return current_index
             }
         }
-        SdlViewer::load_height_map(drawer, file_name, index);
+        SdlViewer::load_height_map(drawer, file_name, index, use_vertex_normals);
         index
     }
 
@@ -110,8 +110,8 @@ impl SdlViewer {
         format!("{}{:06}.pb", file_name, index)
     }
 
-    fn load_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, index: i32) {
-        drawer.load_proto(SdlViewer::get_height_map_file_name(&file_name, index));
+    fn load_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, index: i32, use_vertex_normals: bool) {
+        drawer.load_proto(SdlViewer::get_height_map_file_name(&file_name, index), use_vertex_normals);
     }
 
     pub fn run(self) {
@@ -216,9 +216,10 @@ impl SdlViewer {
         let mut show_octree_nodes = false;
 
         let mut current_height_index = 0;
+        let mut use_vertex_normals = false;
         let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
         if !maybe_height_map_file_name.is_none() {
-            SdlViewer::load_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), 0);
+            SdlViewer::load_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), 0, use_vertex_normals);
         }
 
         let mut camera = Camera::new(&gl, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -253,8 +254,9 @@ impl SdlViewer {
                         Scancode::O => show_octree_nodes = !show_octree_nodes,
                         Scancode::Num1 => show_points = !show_points,
                         Scancode::Num2 => show_heightmap = !show_heightmap,
-                        Scancode::Num3 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index, -1); },
-                        Scancode::Num4 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index,  1); },
+                        Scancode::Num3 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index, -1, use_vertex_normals); },
+                        Scancode::Num4 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index,  1, use_vertex_normals); },
+                        Scancode::T => { use_vertex_normals = !use_vertex_normals; SdlViewer::load_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index, use_vertex_normals); }
                         Scancode::Num7 => gamma -= 0.1,
                         Scancode::Num8 => gamma += 0.1,
                         Scancode::Num9 => point_size -= 0.1,

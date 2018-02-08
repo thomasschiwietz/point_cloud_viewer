@@ -120,7 +120,7 @@ impl<'a> HeightMapDrawer<'a> {
         -n.normalize()
     }
 
-    pub fn load_proto(&mut self, file_name: String) {
+    pub fn load_proto(&mut self, file_name: String, use_vertex_normals: bool) {
         println!("loading height map {}", file_name);
 
         let ground_map_proto = {
@@ -141,7 +141,7 @@ impl<'a> HeightMapDrawer<'a> {
                 let v = Vector3::new(
                     origin_x + (x as f32 * resolution_m),
                     origin_y + (y as f32 * resolution_m),
-                    // f32::sin(x as f32 / (0.25 * size as f32) * y as f32 / (0.25 * size as f32)) + 50.
+                    // f32::sin(x as f32 / (0.25 * size as f32) * y as f32 / (0.25 * size as f32)) + 50.        // sine wave
                     ground_map_proto.z[i] as f32,
                 );
                 grid_vertices.push(v);
@@ -150,23 +150,25 @@ impl<'a> HeightMapDrawer<'a> {
         }
         //println!("{:?}", grid_vertices);
 
-        // let mut vertex_normals = Vec::new();
-        // for y in 0..size {
-        //     for x in 0..size {
-        //         vertex_normals[HeightMapDrawer::linear_index(x, y, size)] = Vec::new();
-        //     }
-        // }
+        let mut vertex_normals_vec = Vec::new();
+        vertex_normals_vec.resize((size * size) as usize, Vec::new());
 
         // compute triangle list
         let mut triangle_vertices = Vec::new();
         let mut triangle_normals = Vec::new();
         for y in 0..size-1 {
             for x in 0..size-1 {
+                // get indices
+                let i00 = HeightMapDrawer::linear_index(x, y, size);
+                let i10 = HeightMapDrawer::linear_index(x + 1, y, size);
+                let i01 = HeightMapDrawer::linear_index(x, y + 1, size);
+                let i11 = HeightMapDrawer::linear_index(x + 1, y + 1, size);
+
                 // get vertices
-                let v00 = grid_vertices[HeightMapDrawer::linear_index(x, y, size)];
-                let v10 = grid_vertices[HeightMapDrawer::linear_index(x+1, y, size)];
-                let v01 = grid_vertices[HeightMapDrawer::linear_index(x, y+1, size)];
-                let v11 = grid_vertices[HeightMapDrawer::linear_index(x+1, y+1, size)];
+                let v00 = grid_vertices[i00];
+                let v10 = grid_vertices[i10];
+                let v01 = grid_vertices[i01];
+                let v11 = grid_vertices[i11];
 
                 // lower triangle
                 triangle_vertices.push(v00);
@@ -176,9 +178,9 @@ impl<'a> HeightMapDrawer<'a> {
                 triangle_normals.push(normal0);
                 triangle_normals.push(normal0);
                 triangle_normals.push(normal0);
-                //vertex_normals[HeightMapDrawer::linear_index(x, y, size)].push(normal0);
-                // vertex_normals[HeightMapDrawer::linear_index(x+1, y, size)].push(normal0);
-                // vertex_normals[HeightMapDrawer::linear_index(x+1, y+1, size)].push(normal0);
+                vertex_normals_vec[i00].push(normal0);
+                vertex_normals_vec[i10].push(normal0);
+                vertex_normals_vec[i11].push(normal0);
 
                 // upper triangle
                 triangle_vertices.push(v00);
@@ -188,23 +190,50 @@ impl<'a> HeightMapDrawer<'a> {
                 triangle_normals.push(normal1);
                 triangle_normals.push(normal1);
                 triangle_normals.push(normal1);
-                //vertex_normals[HeightMapDrawer::linear_index(x, y, size)].push(normal1);
-                //vertex_normals[HeightMapDrawer::linear_index(x+1, y+1, size)].push(normal1);
-                //vertex_normals[HeightMapDrawer::linear_index(x, y+1, size)].push(normal1);
+                vertex_normals_vec[i00].push(normal1);
+                vertex_normals_vec[i11].push(normal1);
+                vertex_normals_vec[i01].push(normal1);
             }
         }
         self.num_indices = triangle_vertices.len();
         //println!("{:?}", self.triangle_vertices);
 
-        // compute vertex normals
-        // let vertex_normals = triangle_normals.clone();
-        // for y in 1..size-1 {
-        //     for x in 1..size-1 {
-        //         let vn = 
-        //         ;
-        //         vertex_normals[HeightMapDrawer::linear_index(x, y, size)] = vn;
-        //     }
-        // }
+        // normalize vertex normals
+        if use_vertex_normals {
+            let mut vertex_normals = Vec::new();
+            for vn in &vertex_normals_vec {
+                let mut vertex_normal = Vector3::new(0., 0., 0.);
+                for normal in vn {
+                    vertex_normal += *normal;
+                }
+                if vn.len() > 0 {
+                    vertex_normal /= vn.len() as f32;
+                }
+                vertex_normals.push(vertex_normal);
+            }
+
+            // recreate triangle normals from vertex normals
+            triangle_normals.clear();
+            for y in 0..size-1 {
+                for x in 0..size-1 {
+                    // get indices
+                    let i00 = HeightMapDrawer::linear_index(x, y, size);
+                    let i10 = HeightMapDrawer::linear_index(x + 1, y, size);
+                    let i01 = HeightMapDrawer::linear_index(x, y + 1, size);
+                    let i11 = HeightMapDrawer::linear_index(x + 1, y + 1, size);
+
+                    // lower triangle
+                    triangle_normals.push(vertex_normals[i00]);
+                    triangle_normals.push(vertex_normals[i10]);
+                    triangle_normals.push(vertex_normals[i11]);
+
+                    // upper triangle
+                    triangle_normals.push(vertex_normals[i00]);
+                    triangle_normals.push(vertex_normals[i11]);
+                    triangle_normals.push(vertex_normals[i01]);
+                }
+            }
+        }
 
         println!("number of triangles {} / {}", self.num_indices / 3, triangle_normals.len() / 3);
 
