@@ -73,6 +73,7 @@ impl ImageDrawer {
         unsafe {
             gl::UseProgram(self.program.id);
             //gl::Disable(gl::DEPTH_TEST);
+            gl::DepthMask(gl::FALSE);
 
             // bind texture to unit 0
             gl::Uniform1i(self.u_texture_id, 0);
@@ -84,6 +85,8 @@ impl ImageDrawer {
             self.quad_buffer.draw();
 
             gl::BindTexture(gl::TEXTURE_2D, 0);
+
+            gl::DepthMask(gl::TRUE);
         }
     }
 }
