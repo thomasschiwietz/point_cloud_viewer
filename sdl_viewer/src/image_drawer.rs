@@ -72,7 +72,7 @@ impl ImageDrawer {
 
         unsafe {
             gl::UseProgram(self.program.id);
-            //gl::Disable(gl::DEPTH_TEST);
+            gl::Disable(gl::DEPTH_TEST);
             gl::DepthMask(gl::FALSE);
 
             // bind texture to unit 0
@@ -87,6 +87,7 @@ impl ImageDrawer {
             gl::BindTexture(gl::TEXTURE_2D, 0);
 
             gl::DepthMask(gl::TRUE);
+            gl::Enable(gl::DEPTH_TEST);
         }
     }
 }
