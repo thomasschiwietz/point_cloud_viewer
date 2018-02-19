@@ -533,8 +533,8 @@ fn main() {
     gl_attr.set_context_profile(GLProfile::Core);
     gl_attr.set_context_version(3, 2);
 
-    const WINDOW_WIDTH: i32 = 800;
-    const WINDOW_HEIGHT: i32 = 600;
+    const WINDOW_WIDTH: i32 = 800 * 2;
+    const WINDOW_HEIGHT: i32 = 600 * 2;
     let window = match video_subsystem
               .window("sdl2_viewer", WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
               .position_centered()
@@ -581,7 +581,7 @@ fn main() {
 
     let mut render_mode = RenderMode::BruteForce;
 
-    let mut slice_limit = 20;
+    let mut slice_limit = 2;
 
     let mut show_depth_buffer = false;
     let mut show_reduced_depth_buffer = false;
@@ -597,7 +597,7 @@ fn main() {
     let mut show_octree_view = false;
     let mut use_level_of_detail = true;
     let mut point_size = 1.;
-    let mut gamma = 1.3;
+    let mut gamma = 1.2;
     let mut main_loop = || {
         for event in events.poll_iter() {
             match event {
@@ -680,7 +680,8 @@ fn main() {
         }
 
         if camera.update() {
-            use_level_of_detail = false;
+            use_level_of_detail = true;
+            render_mode = RenderMode::Limited;
             node_drawer.update_world_to_gl(&camera.get_world_to_gl());
             visible_nodes = octree.get_visible_nodes(
                 &camera.get_world_to_gl(),
@@ -693,6 +694,7 @@ fn main() {
             camera_octree.update();
         } else {
             use_level_of_detail = false;
+            render_mode = RenderMode::BruteForce;
 
             // clear occlusion
             for i in 0..visible_nodes.len() {
