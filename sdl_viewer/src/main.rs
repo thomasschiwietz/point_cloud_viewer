@@ -737,7 +737,7 @@ fn main() {
 
             //let mx_still_frame = camera.get_world_to_gl();
             mx_still_frame_inv = camera.get_world_to_gl().inverse_transform().unwrap().into();
-            println!("updating still image");
+            //println!("updating still image");
             // println!("for: {:?}", mx_still_frame);
             // println!("inv: {:?}", mx_still_frame_inv);
         }
@@ -754,21 +754,8 @@ fn main() {
             //println!("camera {:?}", camera.get_world_to_gl());
             //println!("lastinv {:?}", mx_still_frame_inv);
             let mx = camera.get_world_to_gl() * mx_still_frame_inv;
-            //let mx = /*camera.get_world_to_gl() * */mx_still_frame_inv;
-            //let mx = mx_camera_inv;
-
-            // let mx_camera_inv: Matrix4<f32> = mx_still_frame_inv.inverse_transform().unwrap().into();
-            // let mx = mx_still_frame_inv * mx_camera_inv;
-
-            //let mx = Matrix4::from_scale(0.5) * Matrix4::from_translation(Vector3::new(0.75, 0., 0.));
-            //let mx = mx.inverse_transform().unwrap();
-            // render box outline
-
-            //let mx = Matrix4::from_scale(0.99);
 
             //println!("mx {:?}", mx);
-
-            // let mx = Matrix4::from_scale(0.5);
 
             image_drawer.draw(fb.color_texture.id, &mx);
 
