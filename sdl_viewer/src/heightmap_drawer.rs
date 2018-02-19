@@ -141,8 +141,7 @@ impl<'a> HeightMapDrawer<'a> {
                 let v = Vector3::new(
                     origin_x + (x as f32 * resolution_m),
                     origin_y + (y as f32 * resolution_m),
-                    // f32::sin(x as f32 / (0.25 * size as f32) * y as f32 / (0.25 * size as f32)) + 50.        // sine wave
-                    ground_map_proto.z[i] as f32,
+                    ground_map_proto.z[i] as f32,           // can be infinite
                 );
                 grid_vertices.push(v);
                 i += 1;
@@ -169,6 +168,11 @@ impl<'a> HeightMapDrawer<'a> {
                 let v10 = grid_vertices[i10];
                 let v01 = grid_vertices[i01];
                 let v11 = grid_vertices[i11];
+
+                // skip triangles with undefined height values
+                if v00.z.is_nan() || v10.z.is_nan() || v01.z.is_nan() || v11.z.is_nan() { 
+                    continue;
+                }
 
                 // lower triangle
                 triangle_vertices.push(v00);
@@ -222,6 +226,17 @@ impl<'a> HeightMapDrawer<'a> {
                     let i01 = HeightMapDrawer::linear_index(x, y + 1, size);
                     let i11 = HeightMapDrawer::linear_index(x + 1, y + 1, size);
 
+                    // get vertices
+                    let v00 = grid_vertices[i00];
+                    let v10 = grid_vertices[i10];
+                    let v01 = grid_vertices[i01];
+                    let v11 = grid_vertices[i11];
+
+                    // skip triangles with undefined height values
+                    if v00.z.is_nan() || v10.z.is_nan() || v01.z.is_nan() || v11.z.is_nan() { 
+                        continue;
+                    }
+
                     // lower triangle
                     triangle_normals.push(vertex_normals[i00]);
                     triangle_normals.push(vertex_normals[i10]);
@@ -235,7 +250,7 @@ impl<'a> HeightMapDrawer<'a> {
             }
         }
 
-        println!("number of triangles {} / {}", self.num_indices / 3, triangle_normals.len() / 3);
+        println!("number of triangles {}", self.num_indices / 3);
 
         self.vertex_array.bind();
 
