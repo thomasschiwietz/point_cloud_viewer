@@ -722,7 +722,10 @@ fn main() {
         let mut current_batch = 0;
         let mut num_queries = 0;
 
-        fb.bind();
+        if !use_level_of_detail {
+            // render to texture in brute force mode
+            fb.bind();
+        }
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -1234,14 +1237,17 @@ fn main() {
             },
         }
 
-        fb.unbind();
+        if !use_level_of_detail {
+            // copy to screen in brute force mode
+            fb.unbind();
 
-        unsafe {
-            gl::Viewport(0, 0, camera.width, camera.height);
-            gl::ClearColor(0., 0., 0., 1.);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            unsafe {
+                gl::Viewport(0, 0, camera.width, camera.height);
+                gl::ClearColor(0., 0., 0., 1.);
+                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            }
+            image_drawer.draw(fb.color_texture.id);
         }
-        image_drawer.draw(fb.color_texture.id);
 
         // render/copy to default framebuffer
 
