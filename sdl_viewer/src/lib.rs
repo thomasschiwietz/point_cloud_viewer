@@ -38,3 +38,4 @@ pub mod boxdrawer;
 pub mod quad_buffer;
 pub mod reduction;
 pub mod zbuffer_drawer;
+pub mod image_drawer;

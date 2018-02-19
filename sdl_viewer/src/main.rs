@@ -33,9 +33,10 @@ use sdl2::video::GLProfile;
 use sdl_viewer::{Camera, gl};
 use sdl_viewer::boxdrawer::BoxDrawer;
 use sdl_viewer::zbuffer_drawer::ZBufferDrawer;
+use sdl_viewer::image_drawer::ImageDrawer;
 use sdl_viewer::reduction::Reduction;
 use sdl_viewer::gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
-use sdl_viewer::graphic::{GlBuffer, GlProgram, GlVertexArray, GlQuery, GlTexture, TextureType};
+use sdl_viewer::graphic::{GlBuffer, GlFramebuffer, GlProgram, GlVertexArray, GlQuery, GlTexture, TextureType};
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
@@ -589,6 +590,9 @@ fn main() {
 
     let mut shift_pressed = false;
 
+    let mut fb = GlFramebuffer::new(camera.width, camera.height, TextureType::ColorRGB8, TextureType::Depth);
+    let mut image_drawer = ImageDrawer::new();
+
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
     let mut last_log = time::PreciseTime::now();
@@ -717,6 +721,8 @@ fn main() {
 
         let mut current_batch = 0;
         let mut num_queries = 0;
+
+        fb.bind();
 
         unsafe {
             gl::Viewport(0, 0, camera.width, camera.height);
@@ -1227,6 +1233,17 @@ fn main() {
                 }
             },
         }
+
+        fb.unbind();
+
+        unsafe {
+            gl::Viewport(0, 0, camera.width, camera.height);
+            gl::ClearColor(0., 0., 0., 1.);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+        }
+        image_drawer.draw(fb.color_texture.id);
+
+        // render/copy to default framebuffer
 
         //gl_query.end();
 
