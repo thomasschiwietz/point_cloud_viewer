@@ -14,14 +14,15 @@
 
 use gl;
 use graphic::GlProgram;
-use gl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
+use gl::types::{GLboolean, GLint, GLuint};
 use std::str;
 use std::mem;
 use std::ptr;
 use quad_buffer::QuadBuffer;
+use cgmath::{Matrix, Matrix4};
 
 const FRAGMENT_SHADER_QUAD: &'static str = include_str!("../shaders/image_drawer.fs");
-const VERTEX_SHADER_QUAD: &'static str = include_str!("../shaders/quad_drawer.vs");
+const VERTEX_SHADER_QUAD: &'static str = include_str!("../shaders/image_drawer.vs");
 
 pub struct ImageDrawer
 {
@@ -29,6 +30,7 @@ pub struct ImageDrawer
 
     program: GlProgram,
     u_texture_id: GLint,
+    u_matrix: GLint,
 }
 
 impl ImageDrawer {
@@ -37,9 +39,11 @@ impl ImageDrawer {
 
         let program = GlProgram::new(VERTEX_SHADER_QUAD, FRAGMENT_SHADER_QUAD);  
         let u_texture_id;
+        let u_matrix;
         unsafe {
             gl::UseProgram(program.id);
             u_texture_id = gl::GetUniformLocation(program.id, c_str!("aTex"));
+            u_matrix = gl::GetUniformLocation(program.id, c_str!("matrix"));
         }
 
         quad_buffer.vertex_array.bind();
@@ -60,18 +64,22 @@ impl ImageDrawer {
             quad_buffer,
             program,
             u_texture_id,
+            u_matrix,
         }        
     }
 
-    pub fn draw(&self, texture_id: GLuint) {
+    pub fn draw(&self, texture_id: GLuint, matrix: &Matrix4<f32>) {
 
         unsafe {
             gl::UseProgram(self.program.id);
+            //gl::Disable(gl::DEPTH_TEST);
 
             // bind texture to unit 0
             gl::Uniform1i(self.u_texture_id, 0);
             gl::ActiveTexture(gl::TEXTURE0 + 0);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
+
+            gl::UniformMatrix4fv(self.u_matrix, 1, false as GLboolean, matrix.as_ptr());
 
             self.quad_buffer.draw();
 

@@ -222,6 +222,7 @@ fn draw_octree_view(box_drawer: &BoxDrawer, camera: &Camera, camera_octree: &Cam
     let mx = mx_camera_octree * mx_inv_camera;
     box_drawer.update_transform(&mx);
     box_drawer.draw_outlines();
+    println!("{:?}", mx);
 
     // render border
     let border_color = vec![0.5, 0.5, 0.6, 1.0];
@@ -590,8 +591,9 @@ fn main() {
 
     let mut shift_pressed = false;
 
-    let mut fb = GlFramebuffer::new(camera.width, camera.height, TextureType::ColorRGB8, TextureType::Depth);
-    let mut image_drawer = ImageDrawer::new();
+    let fb = GlFramebuffer::new(camera.width, camera.height, TextureType::ColorRGB8, TextureType::Depth);
+    let image_drawer = ImageDrawer::new();
+    let mut mx_still_frame_inv: Matrix4<f32> = Matrix4::from_scale(1.);
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
@@ -725,14 +727,58 @@ fn main() {
         if !use_level_of_detail {
             // render to texture in brute force mode
             fb.bind();
+
+            // clear frame buffer
+            unsafe {
+                gl::Viewport(0, 0, camera.width, camera.height);
+                gl::ClearColor(0., 0., 0., 1.);
+                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            }
+
+            //let mx_still_frame = camera.get_world_to_gl();
+            mx_still_frame_inv = camera.get_world_to_gl().inverse_transform().unwrap().into();
+            println!("updating still image");
+            // println!("for: {:?}", mx_still_frame);
+            // println!("inv: {:?}", mx_still_frame_inv);
+        }
+        else {
+            // render last still image into this one
+
+            unsafe {
+                gl::Viewport(0, 0, camera.width, camera.height);
+                gl::ClearColor(0., 0., 0., 1.);
+                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            }
+
+            //let mx_camera_inv: Matrix4<f32> = camera.get_world_to_gl().inverse_transform().unwrap().into();
+            //println!("camera {:?}", camera.get_world_to_gl());
+            //println!("lastinv {:?}", mx_still_frame_inv);
+            let mx = camera.get_world_to_gl() * mx_still_frame_inv;
+            //let mx = /*camera.get_world_to_gl() * */mx_still_frame_inv;
+            //let mx = mx_camera_inv;
+
+            // let mx_camera_inv: Matrix4<f32> = mx_still_frame_inv.inverse_transform().unwrap().into();
+            // let mx = mx_still_frame_inv * mx_camera_inv;
+
+            //let mx = Matrix4::from_scale(0.5) * Matrix4::from_translation(Vector3::new(0.75, 0., 0.));
+            //let mx = mx.inverse_transform().unwrap();
+            // render box outline
+
+            //let mx = Matrix4::from_scale(0.99);
+
+            //println!("mx {:?}", mx);
+
+            // let mx = Matrix4::from_scale(0.5);
+
+            image_drawer.draw(fb.color_texture.id, &mx);
+
+            let color = vec![1.,1.,1.,1.];
+            box_drawer.update_color(&color);
+            box_drawer.update_transform(&mx);
+            box_drawer.draw_outlines();
         }
 
-        unsafe {
-            gl::Viewport(0, 0, camera.width, camera.height);
-            gl::ClearColor(0., 0., 0., 1.);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-        }
-
+        if !use_level_of_detail {
         match render_mode {
             RenderMode::BruteForce => {
                 for i in 0..visible_nodes.len() {
@@ -1236,17 +1282,14 @@ fn main() {
                 }
             },
         }
+        }
 
         if !use_level_of_detail {
             // copy to screen in brute force mode
             fb.unbind();
 
-            unsafe {
-                gl::Viewport(0, 0, camera.width, camera.height);
-                gl::ClearColor(0., 0., 0., 1.);
-                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            }
-            image_drawer.draw(fb.color_texture.id);
+            let mx = Matrix4::from_scale(1.);   // identity matrix
+            image_drawer.draw(fb.color_texture.id, &mx);
         }
 
         // render/copy to default framebuffer
