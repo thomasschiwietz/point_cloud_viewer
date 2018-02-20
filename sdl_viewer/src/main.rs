@@ -594,6 +594,7 @@ fn main() {
     let fb = GlFramebuffer::new(camera.width, camera.height, TextureType::ColorRGB8, TextureType::Depth);
     let image_drawer = ImageDrawer::new();
     let mut mx_still_frame_inv: Matrix4<f32> = Matrix4::from_scale(1.);
+    let mut enable_still_image = true;
 
     let mut events = ctx.event_pump().unwrap();
     let mut num_frames = 0;
@@ -630,6 +631,7 @@ fn main() {
                                 camera_octree.set_size((camera.width as f32 * octree_view_size) as i32, (camera.height as f32 * octree_view_size) as i32);
                             }
                         },
+                        Scancode::R => enable_still_image = !enable_still_image,
                         Scancode::Num1 => { render_mode = RenderMode::BruteForce; println!("render mode: brute force"); },
                         Scancode::Num2 => { render_mode = RenderMode::Limited; println!("render mode: limited"); },
                         Scancode::Num3 => { render_mode = RenderMode::OcclusionQuery; println!("render mode: occlusion query"); },
@@ -756,16 +758,18 @@ fn main() {
             let mx = camera.get_world_to_gl() * mx_still_frame_inv;
 
             //println!("mx {:?}", mx);
+            if enable_still_image {
+                image_drawer.draw(fb.color_texture.id, &mx);
 
-            image_drawer.draw(fb.color_texture.id, &mx);
-
-            let color = vec![1.,1.,1.,1.];
-            box_drawer.update_color(&color);
-            box_drawer.update_transform(&mx);
-            box_drawer.draw_outlines();
+                let color = vec![1.,1.,1.,1.];
+                box_drawer.update_color(&color);
+                box_drawer.update_transform(&mx);
+                box_drawer.draw_outlines();
+            }
         }
 
-        if !use_level_of_detail {
+        if !use_level_of_detail
+        {
         match render_mode {
             RenderMode::BruteForce => {
                 for i in 0..visible_nodes.len() {

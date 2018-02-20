@@ -43,7 +43,7 @@ pub struct Camera {
 impl Camera {
     pub fn new(width: i32, height: i32, ortho: bool) -> Self {
         let mut camera = Camera {
-            movement_speed: 1.5,
+            movement_speed: 0.3, //1.5,
             moving_backward: false,
             moving_forward: false,
             moving_left: false,
