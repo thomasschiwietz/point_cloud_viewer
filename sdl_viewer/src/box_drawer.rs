@@ -125,7 +125,7 @@ impl<'a> BoxDrawer<'a> {
     }
 
     // Draws the outline of the box where each vertex is transformed with 'transform'.
-    fn draw_outlines_from_transformation(&self, transform: &Matrix4<f32>, color: &Color) {
+    pub fn draw_outlines_from_transformation(&self, transform: &Matrix4<f32>, color: &Color) {
         self.vertex_array.bind();
 
         unsafe {

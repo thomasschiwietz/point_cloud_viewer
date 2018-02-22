@@ -49,9 +49,9 @@ pub mod node_drawer;
 
 use box_drawer::BoxDrawer;
 use camera::Camera;
+use cgmath::{Matrix4, Vector3};
 use color::YELLOW;
 use node_drawer::{NodeDrawer, NodeViewContainer};
-use point_viewer::math::Cube;
 use point_viewer::octree::{self, Octree};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Scancode;
@@ -363,8 +363,10 @@ impl SdlViewer {
 
             if show_heightmap {
                 height_map_drawer.draw(&color2, &camera.get_world_to_camera(), &camera.get_world_to_gl());
-                let cube = Cube::new(height_map_drawer.origin, height_map_drawer.edge_length);
-                box_drawer.draw_outlines(&cube, &camera.get_world_to_gl(), &octree_box_color);
+                let mx = camera.get_world_to_gl()
+                    * Matrix4::from_translation(Vector3::new(height_map_drawer.origin.x + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.y + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.z))
+                    * Matrix4::from_nonuniform_scale(height_map_drawer.edge_length * 0.5, height_map_drawer.edge_length * 0.5, 0.);
+                box_drawer.draw_outlines_from_transformation(&mx, &octree_box_color);
             }
 
             window.gl_swap_window();
