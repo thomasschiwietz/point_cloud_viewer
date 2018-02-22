@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use cgmath::{InnerSpace, Matrix, Matrix4, Vector3};
+use cgmath::{InnerSpace, Matrix, Matrix4, Point3, Vector3};
 // use color::Color;
 use graphic::{GlBuffer, GlProgram, GlVertexArray};
 use opengl;
@@ -31,6 +31,9 @@ const HM_FRAGMENT_SHADER: &str = include_str!("../shaders/heightmap.fs");
 const HM_VERTEX_SHADER: &str = include_str!("../shaders/heightmap.vs");
 
 pub struct HeightMapDrawer<'a> {
+    pub origin: Point3<f32>,
+    pub edge_length: f32,
+
     program: GlProgram<'a>,
 
     // Uniforms locations.
@@ -96,8 +99,12 @@ impl<'a> HeightMapDrawer<'a> {
         }
 
         let num_indices = 0;
+        let origin = Point3::new(0., 0., 0.);
+        let edge_length = 0.;
 
         HeightMapDrawer {
+            origin,
+            edge_length,
             program,
             u_transform,
             u_model_view_transform,
@@ -132,6 +139,9 @@ impl<'a> HeightMapDrawer<'a> {
         let resolution_m = ground_map_proto.resolution_m as f32;
         let origin_x = ground_map_proto.origin_x as f32;
         let origin_y = ground_map_proto.origin_y as f32;
+
+        self.edge_length = (size - 1) as f32 * resolution_m;
+        self.origin = Point3::new(origin_x, origin_y, 0.);//-self.edge_length * 0.5);
 
         // compute grid vertices
         let mut grid_vertices = Vec::new();
