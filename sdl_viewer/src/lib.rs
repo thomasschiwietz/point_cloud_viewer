@@ -50,7 +50,7 @@ pub mod node_drawer;
 use box_drawer::BoxDrawer;
 use camera::Camera;
 use cgmath::{Matrix4, Vector3};
-use color::YELLOW;
+use color::{RED, YELLOW};
 use node_drawer::{NodeDrawer, NodeViewContainer};
 use point_viewer::octree::{self, Octree};
 use sdl2::event::{Event, WindowEvent};
@@ -363,10 +363,20 @@ impl SdlViewer {
 
             if show_heightmap {
                 height_map_drawer.draw(&color2, &camera.get_world_to_camera(), &camera.get_world_to_gl());
-                let mx = camera.get_world_to_gl()
-                    * Matrix4::from_translation(Vector3::new(height_map_drawer.origin.x + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.y + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.z))
-                    * Matrix4::from_nonuniform_scale(height_map_drawer.edge_length * 0.5, height_map_drawer.edge_length * 0.5, 0.);
+                let mx = camera.get_world_to_gl() * 
+                    Matrix4::from_translation(Vector3::new(height_map_drawer.origin.x + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.y + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.z)) *
+                    Matrix4::from_nonuniform_scale(height_map_drawer.edge_length * 0.5, height_map_drawer.edge_length * 0.5, 0.);
                 box_drawer.draw_outlines_from_transformation(&mx, &octree_box_color);
+
+                let red = RED;
+                let mx = camera.get_world_to_gl() * 
+                    Matrix4::from_translation(Vector3::new(22.847, 117.137, 2.09595)) * 
+                    Matrix4::from_scale(0.2);
+                box_drawer.draw_outlines_from_transformation(&mx, &red);
+                let mx = camera.get_world_to_gl() * 
+                    Matrix4::from_translation(Vector3::new(22.847, 117.137, 0.779959)) * 
+                    Matrix4::from_scale(0.2);
+                box_drawer.draw_outlines_from_transformation(&mx, &red);
             }
 
             window.gl_swap_window();
