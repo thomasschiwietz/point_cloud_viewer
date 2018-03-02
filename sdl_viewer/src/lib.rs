@@ -368,15 +368,17 @@ impl SdlViewer {
                     Matrix4::from_nonuniform_scale(height_map_drawer.edge_length * 0.5, height_map_drawer.edge_length * 0.5, 0.);
                 box_drawer.draw_outlines_from_transformation(&mx, &octree_box_color);
 
+                let points = [ 
+                    Vector3::new(22.847, 117.137, 0.779959), 
+                    Vector3::new(22.847, 117.137, 2.09595)
+                    ];
                 let red = RED;
-                let mx = camera.get_world_to_gl() * 
-                    Matrix4::from_translation(Vector3::new(22.847, 117.137, 2.09595)) * 
-                    Matrix4::from_scale(0.2);
-                box_drawer.draw_outlines_from_transformation(&mx, &red);
-                let mx = camera.get_world_to_gl() * 
-                    Matrix4::from_translation(Vector3::new(22.847, 117.137, 0.779959)) * 
-                    Matrix4::from_scale(0.2);
-                box_drawer.draw_outlines_from_transformation(&mx, &red);
+                for p in points.into_iter() {
+                    let mx = camera.get_world_to_gl() * 
+                        Matrix4::from_translation(*p) * 
+                        Matrix4::from_scale(0.1);
+                    box_drawer.draw_outlines_from_transformation(&mx, &red);                    
+                }
             }
 
             window.gl_swap_window();
