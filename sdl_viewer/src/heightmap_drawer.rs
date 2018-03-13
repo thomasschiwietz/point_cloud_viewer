@@ -59,11 +59,9 @@ impl GroundMap {
 
     pub fn get_height(&self, x: i32, y: i32) -> f32 {
         let tile_size = self.proto.data.as_ref().unwrap().tile_size;
-        let tile_pos_x = x / tile_size;
-        let tile_pos_y = y / tile_size;
-        let i = self.tiles.get(&(tile_pos_x, tile_pos_y));
-        if i.is_some() {
-            let tile = &self.proto.data.as_ref().unwrap().tile_data[*i.unwrap()];
+        let entry_opt = self.tiles.get(&(x / tile_size, y / tile_size));
+        if entry_opt.is_some() {
+            let tile = &self.proto.data.as_ref().unwrap().tile_data[*entry_opt.unwrap()];
             return tile.value[((x % tile_size) + (y % tile_size) * tile_size) as usize]
         }
         self.proto.data.as_ref().unwrap().default_value
