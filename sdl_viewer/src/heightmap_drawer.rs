@@ -17,10 +17,10 @@ use cgmath::{InnerSpace, Matrix, Matrix4, Point3, Vector3};
 use graphic::{GlBuffer, GlProgram, GlVertexArray};
 use opengl;
 use opengl::types::{GLboolean, GLint, GLsizeiptr, GLuint};
+use std::collections::HashMap;
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
-
 use protobuf;
 use proto;
 
@@ -32,12 +32,17 @@ const HM_VERTEX_SHADER: &str = include_str!("../shaders/heightmap.vs");
 
 pub struct GroundMap {
     pub proto: proto::GroundMap,
+    tiles: HashMap<(i32, i32), usize>,
 }
 
 impl GroundMap {
     pub fn new(proto: proto::GroundMap) -> Self {
-        // TODO: create HashMap for tiles
-        GroundMap { proto }
+        let mut tiles = HashMap::new();
+        for i in 0..proto.data.as_ref().unwrap().tile_data.len() {
+            let tile = &proto.data.as_ref().unwrap().tile_data[i];
+            tiles.insert((tile.tile_pos_x, tile.tile_pos_y), i);
+        }
+        GroundMap { proto, tiles }
     }
 
     pub fn get_resolution_m(&self) -> f32 {
@@ -56,10 +61,10 @@ impl GroundMap {
         let tile_size = self.proto.data.as_ref().unwrap().tile_size;
         let tile_pos_x = x / tile_size;
         let tile_pos_y = y / tile_size;
-        for tile in self.proto.data.as_ref().unwrap().tile_data.iter() {
-            if tile.tile_pos_x == tile_pos_x && tile.tile_pos_y == tile_pos_y {
-                return tile.value[((x % tile_size) + (y % tile_size) * tile_size) as usize]
-            }
+        let i = self.tiles.get(&(tile_pos_x, tile_pos_y));
+        if i.is_some() {
+            let tile = &self.proto.data.as_ref().unwrap().tile_data[*i.unwrap()];
+            return tile.value[((x % tile_size) + (y % tile_size) * tile_size) as usize]
         }
         self.proto.data.as_ref().unwrap().default_value
     }
