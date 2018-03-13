@@ -32,7 +32,7 @@ const HM_VERTEX_SHADER: &str = include_str!("../shaders/heightmap.vs");
 
 pub struct GroundMap {
     pub proto: proto::GroundMap,
-    tiles: HashMap<(i32, i32), usize>,
+    pub tiles: HashMap<(i32, i32), usize>,
 }
 
 impl GroundMap {
@@ -57,14 +57,25 @@ impl GroundMap {
         self.proto.data.as_ref().unwrap().width
     }
 
+    pub fn get_tile_size(&self) -> i32 {
+        self.proto.data.as_ref().unwrap().tile_size
+    }
+
+    pub fn get_default_value(&self) -> f32 {
+        self.proto.data.as_ref().unwrap().default_value
+    }
+
     pub fn get_height(&self, x: i32, y: i32) -> f32 {
-        let tile_size = self.proto.data.as_ref().unwrap().tile_size;
+        if x < 0 || y < 0 || x >= self.get_grid_size() || y >= self.get_grid_size() {
+            return self.get_default_value()
+        }
+        let tile_size = self.get_tile_size();
         let entry_opt = self.tiles.get(&(x / tile_size, y / tile_size));
         if entry_opt.is_some() {
             let tile = &self.proto.data.as_ref().unwrap().tile_data[*entry_opt.unwrap()];
             return tile.value[((x % tile_size) + (y % tile_size) * tile_size) as usize]
         }
-        self.proto.data.as_ref().unwrap().default_value
+        self.get_default_value()
     }
 
     pub fn get_world_pos(&self, x: i32, y: i32) -> Vector3<f32> {
@@ -185,69 +196,89 @@ impl<'a> HeightMapDrawer<'a> {
         };
         let ground_map = GroundMap::new(ground_map_proto);
 
-        let size = ground_map.get_grid_size();
+        let grid_size = ground_map.get_grid_size();
+        let tile_size = ground_map.get_tile_size();
         let (origin_x, origin_y) = ground_map.get_origin();
         let resolution_m = ground_map.get_resolution_m();
-        self.edge_length = (size - 1) as f32 * resolution_m;
+        let default_value = ground_map.get_default_value();
+
+        self.edge_length = (grid_size - 1) as f32 * resolution_m;
         self.origin = Point3::new(origin_x, origin_y, 0.);
 
         // global list
         let mut triangle_vertices = Vec::new();
         let mut triangle_normals = Vec::new();
 
-        //let mut vertex_normals_vec = Vec::new();
-        //vertex_normals_vec.resize(((tile_size) * (tile_size)) as usize, Vec::new());
-
-        // compute triangle list
-
-        // iterate tiles hashmap with size + 1 but smaller than size
-
-        for y in 0..size-1 {
-            for x in 0..size-1 {
-                // let i00 = HeightMapDrawer::linear_index(x, y, tile_size);
-                // let i10 = HeightMapDrawer::linear_index(x + 1, y, tile_size);
-                // let i01 = HeightMapDrawer::linear_index(x, y + 1, tile_size);
-                // let i11 = HeightMapDrawer::linear_index(x + 1, y + 1, tile_size);
-
-                // get vertices
-                let v00 = ground_map.get_world_pos(x, y);
-                let v10 = ground_map.get_world_pos(x + 1, y);
-                let v01 = ground_map.get_world_pos(x, y + 1);
-                let v11 = ground_map.get_world_pos(x + 1, y + 1);
-
-                // skip triangles with undefined height values
-                if v00.z.is_nan() || v10.z.is_nan() || v01.z.is_nan() || v11.z.is_nan() { 
-                    continue;
-                }
-
-                // lower triangle
-                triangle_vertices.push(v00);
-                triangle_vertices.push(v10);
-                triangle_vertices.push(v11);
-                let normal0 = HeightMapDrawer::compute_triangle_normal(&v00, &v10, &v11);
-                triangle_normals.push(normal0);
-                triangle_normals.push(normal0);
-                triangle_normals.push(normal0);
-                //vertex_normals_vec[i00].push(normal0);
-                //vertex_normals_vec[i10].push(normal0);
-                //vertex_normals_vec[i11].push(normal0);
-
-                // upper triangle
-                triangle_vertices.push(v00);
-                triangle_vertices.push(v11);
-                triangle_vertices.push(v01);
-                let normal1 = HeightMapDrawer::compute_triangle_normal(&v00, &v11, &v01);
-                triangle_normals.push(normal1);
-                triangle_normals.push(normal1);
-                triangle_normals.push(normal1);
-                //vertex_normals_vec[i00].push(normal1);
-                //vertex_normals_vec[i11].push(normal1);
-                //vertex_normals_vec[i01].push(normal1);
+        for (&(tile_pos_x, tile_pos_y), _i) in &ground_map.tiles {
+            let x_offset = tile_pos_x * tile_size;
+            let y_offset = tile_pos_y * tile_size;
+            let mut adapted_tile_size_x = tile_size;
+            let mut adapted_tile_size_y = tile_size;
+            let upper_limit_x = (tile_pos_x + 1) * tile_size;
+            let upper_limit_y = (tile_pos_y + 1) * tile_size;
+            if upper_limit_x >= grid_size {
+                adapted_tile_size_x -= upper_limit_x - grid_size;
             }
+            if upper_limit_y >= grid_size {
+                adapted_tile_size_y -= upper_limit_y - grid_size;
+            }
+
+            let mut vertex_normals_vec = Vec::new();
+            vertex_normals_vec.resize(((tile_size + 1) * (tile_size + 1)) as usize, Vec::new());
+
+            for y in 0..adapted_tile_size_y {
+                for x in 0..adapted_tile_size_x {
+                    let i00 = HeightMapDrawer::linear_index(x, y, tile_size);
+                    let i10 = HeightMapDrawer::linear_index(x + 1, y, tile_size);
+                    let i01 = HeightMapDrawer::linear_index(x, y + 1, tile_size);
+                    let i11 = HeightMapDrawer::linear_index(x + 1, y + 1, tile_size);
+
+                    // get vertices
+                    let v00 = ground_map.get_world_pos(x_offset + x, y_offset + y);
+                    let v10 = ground_map.get_world_pos(x_offset + x + 1, y_offset + y);
+                    let v01 = ground_map.get_world_pos(x_offset + x, y_offset + y + 1);
+                    let v11 = ground_map.get_world_pos(x_offset + x + 1, y_offset + y + 1);
+
+                    // skip triangles with undefined height values
+                    // if v00.z.is_nan() || v10.z.is_nan() || v01.z.is_nan() || v11.z.is_nan() { 
+                    //     continue;
+                    // }
+
+                    if v00.z == default_value || v01.z == default_value || v10.z == default_value || v11.z == default_value {
+                        continue;
+                    }
+
+                    // lower triangle
+                    triangle_vertices.push(v00);
+                    triangle_vertices.push(v10);
+                    triangle_vertices.push(v11);
+                    let normal0 = HeightMapDrawer::compute_triangle_normal(&v00, &v10, &v11);
+                    triangle_normals.push(normal0);
+                    triangle_normals.push(normal0);
+                    triangle_normals.push(normal0);
+                    vertex_normals_vec[i00].push(normal0);
+                    vertex_normals_vec[i10].push(normal0);
+                    vertex_normals_vec[i11].push(normal0);
+
+                    // upper triangle
+                    triangle_vertices.push(v00);
+                    triangle_vertices.push(v11);
+                    triangle_vertices.push(v01);
+                    let normal1 = HeightMapDrawer::compute_triangle_normal(&v00, &v11, &v01);
+                    triangle_normals.push(normal1);
+                    triangle_normals.push(normal1);
+                    triangle_normals.push(normal1);
+                    vertex_normals_vec[i00].push(normal1);
+                    vertex_normals_vec[i11].push(normal1);
+                    vertex_normals_vec[i01].push(normal1);
+                }
+            }
+
+            // TODO: create index buffer and unique vertex buffer
         }
+
         self.num_indices = triangle_vertices.len();
         //println!("{:?}", self.triangle_vertices);
-
 
         // // normalize vertex normals
         // if use_vertex_normals {
