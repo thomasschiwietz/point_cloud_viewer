@@ -2,10 +2,23 @@ syntax = "proto3";
 
 package sdl_viewer.proto;
 
+message TileData {
+  int32 tile_pos_x = 1;
+  int32 tile_pos_y = 2;
+  repeated float value = 3; // We store array data as float in y-major order.
+}
+
+message SparseArray2D {
+  int32 width = 1;
+  int32 height = 2;
+  int32 tile_size = 3; // Tiles are quadratic.
+  float default_value = 4;
+  repeated TileData tile_data = 5;
+}
+
 message GroundMap {
-  int32 size = 1;
   double resolution_m = 2;
   double origin_x = 3;
   double origin_y = 4;
-  repeated double z = 5; // y-major
+  SparseArray2D data = 6;
 }
