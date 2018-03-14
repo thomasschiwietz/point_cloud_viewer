@@ -19,6 +19,7 @@ version = "0.1.0"
 
 [build-dependencies]
 gl_generator = "0.8.0"
+protoc-rust = "1.4.3"
 
 [dependencies]
 cgmath = "0.16.0"
