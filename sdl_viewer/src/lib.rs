@@ -37,6 +37,7 @@ pub mod opengl {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 pub mod box_drawer;
+pub mod heightmap_drawer;
 pub mod graphic;
 pub mod node_drawer;
 
