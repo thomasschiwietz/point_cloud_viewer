@@ -21,6 +21,7 @@ extern crate point_viewer_grpc;
 extern crate rand;
 extern crate sdl2;
 extern crate time;
+extern crate protobuf;
 
 /// Unsafe macro to create a static null-terminated c-string for interop with OpenGL.
 #[macro_export]
