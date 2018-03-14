@@ -55,6 +55,7 @@ use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Scancode;
 use sdl2::video::GLProfile;
 use std::cmp;
+use std::fs;
 use std::error::Error;
 use std::sync::Arc;
 
@@ -79,6 +80,38 @@ impl SdlViewer {
         self
     }
 
+    fn load_next_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, current_index: i32, direction: i32, use_vertex_normals: bool) -> i32 {
+        let mut index = current_index;
+        let mut loop_count = 0;
+        loop {
+            index += direction;
+            if index < 0 {
+                println!("no height map found before index 0");
+                index = 0;
+                break;
+            }
+            let file_name = SdlViewer::get_height_map_file_name(&file_name, index);
+            if !fs::metadata(file_name).is_err() {
+                break;
+            }
+            loop_count += 1;
+            if loop_count > 500 {
+                println!("no height map found after index {}", current_index);
+                return current_index
+            }
+        }
+        SdlViewer::load_height_map(drawer, file_name, index, use_vertex_normals);
+        index
+    }
+
+    fn get_height_map_file_name(file_name: &String, index: i32) -> String {
+        format!("{}{:06}.pb", file_name, index)
+    }
+
+    fn load_height_map(drawer: &mut heightmap_drawer::HeightMapDrawer, file_name: String, index: i32, use_vertex_normals: bool) {
+        drawer.load_proto(SdlViewer::get_height_map_file_name(&file_name, index), use_vertex_normals);
+    }
+
     pub fn run(self) {
         let matches = clap::App::new("sdl_viewer")
             .args(&[
@@ -92,6 +125,11 @@ impl SdlViewer {
                          The default value is 2000 MB and the valid range is 1000 MB to 16000 MB.",
                     )
                     .required(false),
+                clap::Arg::with_name("height_map_file_name")
+                    .long("height_map_file_name")
+                    .help("The file name of a height map protobuf.")
+                    .takes_value(true)
+                    .required(false),
             ])
             .get_matches();
 
@@ -103,6 +141,8 @@ impl SdlViewer {
             .unwrap_or("2000")
             .parse()
             .unwrap();
+
+        let maybe_height_map_file_name = matches.value_of("height_map_file_name");
 
         // Maximum number of MB for the octree node cache in range 1..16 GB. The default is 2 GB
         let limit_cache_size_mb = cmp::max(1000, cmp::min(16_000, cache_size_mb));
@@ -138,8 +178,8 @@ impl SdlViewer {
         gl_attr.set_context_profile(GLProfile::Core);
         gl_attr.set_context_version(3, 2);
 
-        const WINDOW_WIDTH: i32 = 800;
-        const WINDOW_HEIGHT: i32 = 600;
+        const WINDOW_WIDTH: i32 = 800 * 2;
+        const WINDOW_HEIGHT: i32 = 600 * 2;
         let window = match video_subsystem
             .window("sdl2_viewer", WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
             .position_centered()
@@ -171,6 +211,15 @@ impl SdlViewer {
         let octree_box_color = YELLOW;
         let mut show_octree_nodes = false;
 
+        let mut current_height_index = 0;
+        let mut use_vertex_normals = false;
+        let mut height_map_drawer = heightmap_drawer::HeightMapDrawer::new(&gl);
+        if !maybe_height_map_file_name.is_none() {
+            SdlViewer::load_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), 0, use_vertex_normals);
+        }
+        let mut show_points = true;
+        let mut show_heightmap = true;
+
         let mut camera = Camera::new(&gl, WINDOW_WIDTH, WINDOW_HEIGHT);
 
         let mut events = ctx.event_pump().unwrap();
@@ -178,8 +227,8 @@ impl SdlViewer {
         let mut last_log = time::PreciseTime::now();
         let mut force_load_all = false;
         let mut point_size = 2.;
-        let mut gamma = 1.;
-        let mut max_level_moving = 4;
+        let mut gamma = 1.5;
+        let mut max_level_moving = 8;
         let mut last_moving = time::PreciseTime::now();
         let mut needs_drawing = true;
         let mut last_drawing = last_moving;
@@ -204,6 +253,11 @@ impl SdlViewer {
                             Scancode::O => show_octree_nodes = !show_octree_nodes,
                             Scancode::Num1 => max_level_moving -= 1,
                             Scancode::Num2 => max_level_moving += 1,
+                            Scancode::Num3 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index, -1, use_vertex_normals); },
+                            Scancode::Num4 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index,  1, use_vertex_normals); },
+                            Scancode::Num5 => { show_points = !show_points; needs_drawing = true; },
+                            Scancode::Num6 => { show_heightmap = !show_heightmap; needs_drawing = true; },
+                            Scancode::T => { use_vertex_normals = !use_vertex_normals; SdlViewer::load_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index, use_vertex_normals); }
                             Scancode::Num7 => gamma -= 0.1,
                             Scancode::Num8 => gamma += 0.1,
                             Scancode::Num9 => point_size -= 0.1,
@@ -300,25 +354,49 @@ impl SdlViewer {
                 .collect();
             assert!(filtered_visible_nodes.len() < max_nodes_in_memory);
 
-            for visible_node in filtered_visible_nodes {
-                let view = node_views.get_or_request(&visible_node.id, &node_drawer.program);
-                if !needs_drawing || view.is_none() {
-                    continue;
-                }
-                let view = view.unwrap();
-                num_points_drawn +=
-                    node_drawer.draw(view, 1 /* level of detail */, point_size, gamma);
-                num_nodes_drawn += 1;
+            if show_points {
+                for visible_node in filtered_visible_nodes {
+                    let view = node_views.get_or_request(&visible_node.id, &node_drawer.program);
+                    if !needs_drawing || view.is_none() {
+                        continue;
+                    }
+                    let view = view.unwrap();
+                    num_points_drawn +=
+                        node_drawer.draw(view, 1 /* level of detail */, point_size, gamma);
+                    num_nodes_drawn += 1;
 
-                // debug drawer
-                if show_octree_nodes {
-                    box_drawer.draw_outlines(
-                        &view.meta.bounding_cube,
-                        &camera.get_world_to_gl(),
-                        &octree_box_color,
-                    );
+                    // debug drawer
+                    if show_octree_nodes {
+                        box_drawer.draw_outlines(
+                            &view.meta.bounding_cube,
+                            &camera.get_world_to_gl(),
+                            &octree_box_color,
+                        );
+                    }
                 }
             }
+
+            if show_heightmap {
+                let color2 = vec![1.,1.,0.,1.];
+                height_map_drawer.draw(&color2, &camera.get_world_to_camera(), &camera.get_world_to_gl());
+                //let mx = camera.get_world_to_gl() * 
+                //    Matrix4::from_translation(Vector3::new(height_map_drawer.origin.x + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.y + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.z)) *
+                //    Matrix4::from_nonuniform_scale(height_map_drawer.edge_length * 0.5, height_map_drawer.edge_length * 0.5, 0.);
+                //box_drawer.draw_outlines_from_transformation(&mx, &octree_box_color);
+
+                // let points = [ 
+                //     Vector3::new(22.847, 117.137, 0.779959), 
+                //     Vector3::new(22.847, 117.137, 2.09595)
+                //     ];
+                // let red = RED;
+                // for p in points.into_iter() {
+                //     let mx = camera.get_world_to_gl() * 
+                //         Matrix4::from_translation(*p) * 
+                //         Matrix4::from_scale(0.1);
+                //     box_drawer.draw_outlines_from_transformation(&mx, &red);                    
+                // }
+            }
+
             if needs_drawing {
                 window.gl_swap_window();
                 last_drawing = time::PreciseTime::now();
