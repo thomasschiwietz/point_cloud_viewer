@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
-//use protobuf;
+use protobuf;
 use proto;
 
 use std::fs::File;
