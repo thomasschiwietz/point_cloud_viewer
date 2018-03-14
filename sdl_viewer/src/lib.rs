@@ -37,6 +37,9 @@ mod camera;
 pub mod opengl {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
+
+include!(concat!(env!("OUT_DIR"), "/proto.rs"));
+
 pub mod box_drawer;
 pub mod heightmap_drawer;
 pub mod graphic;
