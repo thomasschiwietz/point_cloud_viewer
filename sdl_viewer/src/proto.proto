@@ -20,5 +20,6 @@ message GroundMap {
   double resolution_m = 2;
   double origin_x = 3;
   double origin_y = 4;
+  double origin_z = 7;
   SparseArray2D data = 6;
 }

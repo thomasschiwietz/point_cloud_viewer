@@ -49,8 +49,8 @@ impl GroundMap {
         self.proto.resolution_m as f32
     }
 
-    pub fn get_origin(&self) -> (f32, f32) {
-        (self.proto.origin_x as f32, self.proto.origin_y as f32)
+    pub fn get_origin(&self) -> Vector3<f32> {
+        Vector3::new(self.proto.origin_x as f32, self.proto.origin_y as f32, self.proto.origin_z as f32)
     }
 
     pub fn get_grid_size(&self) -> i32 {
@@ -79,11 +79,10 @@ impl GroundMap {
     }
 
     pub fn get_world_pos(&self, x: i32, y: i32) -> Vector3<f32> {
-        let (origin_x, origin_y) = self.get_origin();
         let resolution_m = self.get_resolution_m();
-        Vector3::new(
-            origin_x + (x as f32 * resolution_m),
-            origin_y + (y as f32 * resolution_m),
+        self.get_origin() + Vector3::new(
+            x as f32 * resolution_m,
+            y as f32 * resolution_m,
             self.get_height(x, y)
         )
     }
@@ -198,12 +197,12 @@ impl<'a> HeightMapDrawer<'a> {
 
         let grid_size = ground_map.get_grid_size();
         let tile_size = ground_map.get_tile_size();
-        let (origin_x, origin_y) = ground_map.get_origin();
+        let origin = ground_map.get_origin();
         let resolution_m = ground_map.get_resolution_m();
         let default_value = ground_map.get_default_value();
 
         self.edge_length = (grid_size - 1) as f32 * resolution_m;
-        self.origin = Point3::new(origin_x, origin_y, 0.);
+        self.origin = Point3::new(origin.x, origin.y, origin.z);
 
         // global list
         let mut triangle_vertices = Vec::new();
