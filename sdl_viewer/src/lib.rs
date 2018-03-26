@@ -220,6 +220,7 @@ impl SdlViewer {
         }
         let mut show_points = true;
         let mut show_heightmap = true;
+        let mut show_wire_frame = false;
 
         let mut camera = Camera::new(&gl, WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -258,6 +259,7 @@ impl SdlViewer {
                             Scancode::Num4 => { current_height_index = SdlViewer::load_next_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index,  1, use_vertex_normals); },
                             Scancode::Num5 => { show_points = !show_points; needs_drawing = true; },
                             Scancode::Num6 => { show_heightmap = !show_heightmap; needs_drawing = true; },
+                            Scancode::Y => { show_wire_frame = !show_wire_frame; needs_drawing = true; },
                             Scancode::T => { use_vertex_normals = !use_vertex_normals; SdlViewer::load_height_map(&mut height_map_drawer, maybe_height_map_file_name.unwrap().to_string(), current_height_index, use_vertex_normals); }
                             Scancode::Num7 => gamma -= 0.1,
                             Scancode::Num8 => gamma += 0.1,
@@ -379,7 +381,7 @@ impl SdlViewer {
 
             if show_heightmap {
                 let color2 = vec![1.,1.,0.,1.];
-                height_map_drawer.draw(&color2, &camera.get_world_to_camera(), &camera.get_world_to_gl());
+                height_map_drawer.draw(&color2, &camera.get_world_to_camera(), &camera.get_world_to_gl(), show_wire_frame);
                 let mx = camera.get_world_to_gl() * 
                     Matrix4::from_translation(Vector3::new(height_map_drawer.origin.x + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.y + height_map_drawer.edge_length * 0.5, height_map_drawer.origin.z)) *
                     Matrix4::from_nonuniform_scale(height_map_drawer.edge_length * 0.5, height_map_drawer.edge_length * 0.5, 0.);

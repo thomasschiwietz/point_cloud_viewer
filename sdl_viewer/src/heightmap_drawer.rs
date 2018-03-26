@@ -360,15 +360,21 @@ impl<'a> HeightMapDrawer<'a> {
 
     }
 
-    pub fn draw(&self, color: &Vec<f32>, world_to_view: &Matrix4<f32>, world_to_gl: &Matrix4<f32>) {
+    pub fn draw(&self, color: &Vec<f32>, world_to_view: &Matrix4<f32>, world_to_gl: &Matrix4<f32>, wireframe: bool) {
         self.vertex_array.bind();
 
         unsafe {
+            if wireframe {
+                self.program.gl.PolygonMode(opengl::FRONT_AND_BACK, opengl::LINE);
+            }
             self.program.gl.UseProgram(self.program.id);
             self.program.gl.UniformMatrix4fv(self.u_transform, 1, false as GLboolean, world_to_gl.as_ptr());
             self.program.gl.UniformMatrix4fv(self.u_model_view_transform, 1, false as GLboolean, world_to_view.as_ptr());
             self.program.gl.Uniform4fv(self.u_color, 1, color.as_ptr());
             self.program.gl.DrawArrays(opengl::TRIANGLES, 0, self.num_indices as i32);
+            if wireframe {
+                self.program.gl.PolygonMode(opengl::FRONT_AND_BACK, opengl::FILL);
+            }
         }
     }
 }
