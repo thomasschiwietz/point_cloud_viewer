@@ -216,10 +216,10 @@ impl<'a> HeightMapDrawer<'a> {
             let upper_limit_x = (tile_pos_x + 1) * tile_size;
             let upper_limit_y = (tile_pos_y + 1) * tile_size;
             if upper_limit_x >= grid_size {
-                adapted_tile_size_x -= upper_limit_x - grid_size;
+                adapted_tile_size_x -= upper_limit_x - grid_size + 1;
             }
             if upper_limit_y >= grid_size {
-                adapted_tile_size_y -= upper_limit_y - grid_size;
+                adapted_tile_size_y -= upper_limit_y - grid_size + 1;
             }
 
             let mut vertex_normals_vec = Vec::new();
