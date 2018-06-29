@@ -51,6 +51,7 @@ use cgmath::{Matrix4, Vector3};
 use fnv::FnvHashMap;
 use node_drawer::{NodeDrawer, NodeViewContainer};
 use point_viewer::color::YELLOW;
+use point_viewer::color::RED;
 use point_viewer::octree::{self, Octree};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Scancode;
@@ -387,17 +388,19 @@ impl SdlViewer {
                     Matrix4::from_nonuniform_scale(height_map_drawer.edge_length * 0.5, height_map_drawer.edge_length * 0.5, 0.);
                 box_drawer.draw_outlines_from_transformation(&mx, &octree_box_color);
 
-                // let points = [ 
-                //     Vector3::new(22.847, 117.137, 0.779959), 
-                //     Vector3::new(22.847, 117.137, 2.09595)
-                //     ];
-                // let red = RED;
-                // for p in points.into_iter() {
-                //     let mx = camera.get_world_to_gl() * 
-                //         Matrix4::from_translation(*p) * 
-                //         Matrix4::from_scale(0.1);
-                //     box_drawer.draw_outlines_from_transformation(&mx, &red);                    
-                // }
+                let points = [ 
+                    Vector3::new(3616.0, 2199.24, -19.3947),
+                    Vector3::new(3616.0, 2199.24, -13.128),
+                    // Vector3::new(22.847, 117.137, 0.779959), 
+                    // Vector3::new(22.847, 117.137, 2.09595)
+                    ];
+                let red = RED;
+                for p in points.into_iter() {
+                    let mx = camera.get_world_to_gl() * 
+                        Matrix4::from_translation(*p) * 
+                        Matrix4::from_scale(100.);
+                    box_drawer.draw_outlines_from_transformation(&mx, &red);                    
+                }
             }
 
             if needs_drawing {
